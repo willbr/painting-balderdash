@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter.ttk import *
 
+brush_size = 20
+
 root = Tk()
 root.geometry('800x600')
 root.title('Painting Balderdash')
@@ -21,10 +23,10 @@ hscrollbar.config(command=canvas.xview)
 vscrollbar.config(command=canvas.yview)
 
 def paint(event):
-    size = 20
-    step = size / 2
+
+    step = brush_size / 2
     x1, y1 = (canvas.canvasx(event.x) - step), (canvas.canvasy(event.y) - step)
-    x2, y2 = x1 + size, y1 + size
+    x2, y2 = x1 + brush_size, y1 + brush_size
 
     canvas.create_oval(x1, y1, x2, y2, fill='#8B88EF',  width=0)
 
@@ -46,6 +48,9 @@ def on_canvas_resize(event):
     canvas.config(
         xscrollcommand=hscrollbar.set,
         yscrollcommand=vscrollbar.set)
+
+
+canvas.config(cursor='crosshair')
 
 canvas.bind('<Configure>', on_canvas_resize)
 
