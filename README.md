@@ -10,4 +10,6 @@ silly paint program
 * layers
 * line tool?
 * colour picker
+* brush size
+* brush size cursor
 * zoom
