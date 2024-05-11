@@ -102,6 +102,27 @@ def on_canvas_resize(event=None):
         xscrollcommand=hscrollbar.set,
         yscrollcommand=vscrollbar.set)
 
+def on_windows_zoom(event):
+    ctrl_is_down = event.state == 4
+    if ctrl_is_down == False:
+        return
+    x = canvas.canvasx(event.x)
+    y = canvas.canvasy(event.y)
+
+    if event.delta > 0:
+        zoom_in(x, y)
+    else:
+        zoom_out(x, y)
+
+zoom_in_scale  = 1.2
+zoom_out_scale = 0.8
+
+def zoom_in(x, y):
+    canvas.scale('all', x,y, zoom_in_scale, zoom_in_scale)
+
+def zoom_out(x, y):
+    canvas.scale('all', x,y, zoom_out_scale, zoom_out_scale)
+
 canvas.config(cursor='crosshair')
 
 canvas.bind('<Configure>', on_canvas_resize)
@@ -110,6 +131,7 @@ canvas.bind('<B1-Motion>', paint)
 canvas.bind('<ButtonPress-1>', paint)
 canvas.bind('<ButtonRelease-1>', on_canvas_resize)
 
+canvas.bind('<MouseWheel>', on_windows_zoom)
 root.wm_state('zoomed')
 root.mainloop()
 
