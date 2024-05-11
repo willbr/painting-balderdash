@@ -50,10 +50,10 @@ canvas.pack(side=LEFT, fill=BOTH, expand=YES)
 hscrollbar.config(command=canvas.xview)
 vscrollbar.config(command=canvas.yview)
 
-def clear_canvas(event):
+def clear_canvas():
     canvas.delete('all')
 
-clear_button.command = clear_canvas
+clear_button.config(command=clear_canvas)
 
 def paint(event):
 
