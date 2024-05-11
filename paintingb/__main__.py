@@ -1,10 +1,16 @@
 from tkinter import *
 from tkinter.ttk import *
+from time import time
+from math import sqrt
 
 background_colour = '#aaa'
 
+last_x = None
+last_y = None
+last_time = None
+
 brush_size = 20
-bursh_color = '#8B88EF'
+brush_color = '#8B88EF'
 
 root = Tk()
 root.geometry('800x600')
@@ -21,10 +27,12 @@ colours = [
     ['Blue', '#88f'],
 ]
 
+speed_map = [max(10, int(x // 8)) for x in range(256)][::-1]
+
 def set_colour(colour):
     def fn():
-        global bursh_color
-        bursh_color = colour
+        global brush_color
+        brush_color = colour
     return fn
 
 for k, v in colours:
@@ -58,12 +66,66 @@ def clear_canvas():
 
 clear_button.config(command=clear_canvas)
 
-def paint(event):
-    step = brush_size / 2
-    x1, y1 = (canvas.canvasx(event.x) - step), (canvas.canvasy(event.y) - step)
-    x2, y2 = x1 + brush_size, y1 + brush_size
 
-    canvas.create_oval(x1, y1, x2, y2, fill=bursh_color,  width=0)
+def paint_first(event):
+    global last_time
+    global last_x
+    global last_y
+    global brush_size
+    last_time = time()
+    last_x = canvas.canvasx(event.x)
+    last_y = canvas.canvasy(event.y)
+    brush_size = 10
+    paint(event)
+
+
+def paint(event):
+    global last_time
+    global last_x
+    global last_y
+    global brush_size
+
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+    print((x, y, last_x, last_y))
+
+    this_time = time()
+
+    if last_time is None:
+        last_time = this_time
+        last_x = x
+        last_y = y
+
+    time_diff = this_time - last_time
+    distance = sqrt((x - last_x) ** 2 + (y - last_y) ** 2)
+    if time_diff == 0:
+        return
+    else:
+        speed = distance / time_diff
+        speed = min(4000, max(100, speed))
+
+
+    b = int((speed / 4000) * 255)
+    speed_color = f'#0000{b:02x}'
+
+    next_brush_size = speed_map[b]
+    brush_size = (brush_size + next_brush_size) // 2
+
+    #print((f'{x:3.0f},{y:3.0f} {distance:-2.2f}, {speed:-7.2f}, {brush_size} {b:-3d}'))
+
+    canvas.create_line(
+            last_x, last_y,
+            x, y,
+            fill=brush_color,
+            #fill=speed_color,
+            width=brush_size,
+            joinstyle='round',
+            capstyle=ROUND,
+            smooth=True,
+            )
+
+    last_time = this_time
+    last_x = x
+    last_y = y
 
 
 def on_canvas_resize(event=None):
@@ -127,11 +189,11 @@ canvas.config(cursor='crosshair')
 
 canvas.bind('<Configure>', on_canvas_resize)
 
+canvas.bind('<ButtonPress-1>', paint_first)
 canvas.bind('<B1-Motion>', paint)
-canvas.bind('<ButtonPress-1>', paint)
 canvas.bind('<ButtonRelease-1>', on_canvas_resize)
 
 canvas.bind('<MouseWheel>', on_windows_zoom)
-root.wm_state('zoomed')
+#root.wm_state('zoomed')
 root.mainloop()
 
