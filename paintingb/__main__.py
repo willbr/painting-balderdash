@@ -4,6 +4,7 @@ from math import sqrt
 
 background_colour = '#aaa'
 
+zoom_level = 1
 line_points = None
 line_id = None
 
@@ -148,10 +149,40 @@ zoom_in_scale  = 1.2
 zoom_out_scale = 0.8
 
 def zoom_in(x, y):
+    global zoom_level
+
+    if zoom_level > 10:
+        return
+
+    zoom_level *= zoom_in_scale
+    #print(zoom_level)
+
     canvas.scale('all', x,y, zoom_in_scale, zoom_in_scale)
 
+    all_items = canvas.find_all()
+    for item_id in all_items:
+        if canvas.type(item_id) == 'line':
+            current_width = float(canvas.itemcget(item_id, 'width'))
+            new_width = current_width * zoom_in_scale
+            canvas.itemconfig(item_id, width=new_width)
+
+
 def zoom_out(x, y):
+    global zoom_level
+
+    if zoom_level < 0.10:
+        return
+
+    zoom_level *= zoom_out_scale
+    #print(zoom_level)
+
     canvas.scale('all', x,y, zoom_out_scale, zoom_out_scale)
+    all_items = canvas.find_all()
+    for item_id in all_items:
+        if canvas.type(item_id) == 'line':
+            current_width = float(canvas.itemcget(item_id, 'width'))
+            new_width = current_width * zoom_out_scale
+            canvas.itemconfig(item_id, width=new_width)
 
 def echo_event(event):
     print(event)
