@@ -72,7 +72,7 @@ def paint_first(event):
     global last_x
     global last_y
     global brush_size
-    last_time = time()
+    last_time = time() - 0.000001
     last_x = canvas.canvasx(event.x)
     last_y = canvas.canvasy(event.y)
     brush_size = 10
