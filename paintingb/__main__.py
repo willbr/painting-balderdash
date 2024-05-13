@@ -1,13 +1,11 @@
 from tkinter import *
 from tkinter.ttk import *
-from time import time
 from math import sqrt
 
 background_colour = '#aaa'
 
-last_x = None
-last_y = None
-last_time = None
+line_points = None
+line_id = None
 
 brush_size = 20
 brush_color = '#8B88EF'
@@ -27,7 +25,6 @@ colours = [
     ['Blue', '#88f'],
 ]
 
-speed_map = [max(10, int(x // 8)) for x in range(256)][::-1]
 
 def set_colour(colour):
     def fn():
@@ -68,64 +65,35 @@ clear_button.config(command=clear_canvas)
 
 
 def paint_first(event):
-    global last_time
-    global last_x
-    global last_y
-    global brush_size
-    last_time = time() - 0.000001
-    last_x = canvas.canvasx(event.x)
-    last_y = canvas.canvasy(event.y)
-    brush_size = 10
+    global line_points
+    global line_id
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+    line_points = [x,y,x,y]
+
+    line_id = canvas.create_line(
+            x, y,
+            x, y,
+            fill=brush_color,
+            width=brush_size,
+            joinstyle='round',
+            capstyle=ROUND,
+            smooth=False, # it's too slow, once you have lots of things on screen
+                          # maybe try disabling it while scrolling?
+            )
     paint(event)
 
 
 def paint(event):
-    global last_time
-    global last_x
-    global last_y
-    global brush_size
-
+    last_x, last_y = line_points[-2:]
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
-    #print((x, y, last_x, last_y))
 
-    this_time = time()
-
-    if last_time is None:
-        last_time = this_time
-        last_x = x
-        last_y = y
-
-    time_diff = this_time - last_time
     distance = sqrt((x - last_x) ** 2 + (y - last_y) ** 2)
-    if time_diff == 0:
+    if distance < brush_size // 2:
         return
-    else:
-        speed = distance / time_diff
-        speed = min(4000, max(100, speed))
 
-
-    b = int((speed / 4000) * 255)
-    speed_color = f'#0000{b:02x}'
-
-    next_brush_size = speed_map[b]
-    brush_size = (brush_size + next_brush_size) // 2
-
-    #print((f'{x:3.0f},{y:3.0f} {distance:-2.2f}, {speed:-7.2f}, {brush_size} {b:-3d}'))
-
-    canvas.create_line(
-            last_x, last_y,
-            x, y,
-            fill=brush_color,
-            #fill=speed_color,
-            width=brush_size,
-            joinstyle='round',
-            capstyle=ROUND,
-            smooth=True,
-            )
-
-    last_time = this_time
-    last_x = x
-    last_y = y
+    line_points.extend((x,y))
+    #print(len(line_points))
+    canvas.coords(line_id, line_points)
 
 
 def on_canvas_resize(event=None):
