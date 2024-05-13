@@ -86,7 +86,7 @@ def paint(event):
     global brush_size
 
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
-    print((x, y, last_x, last_y))
+    #print((x, y, last_x, last_y))
 
     this_time = time()
 
@@ -185,6 +185,9 @@ def zoom_in(x, y):
 def zoom_out(x, y):
     canvas.scale('all', x,y, zoom_out_scale, zoom_out_scale)
 
+def echo_event(event):
+    print(event)
+
 canvas.config(cursor='crosshair')
 
 canvas.bind('<Configure>', on_canvas_resize)
@@ -193,7 +196,22 @@ canvas.bind('<ButtonPress-1>', paint_first)
 canvas.bind('<B1-Motion>', paint)
 canvas.bind('<ButtonRelease-1>', on_canvas_resize)
 
+#canvas.bind('<ButtonPress-2>', echo_event)
+#canvas.bind('<B2-Motion>', echo_event)
+#canvas.bind('<ButtonRelease-2>', echo_event)
+
+def on_b3_press(event):
+    x, y = event.x, event.y
+    canvas.scan_mark(x, y)
+
+def on_b3_motion(event):
+    x, y = event.x, event.y
+    canvas.scan_dragto(x, y, gain=1)
+
+canvas.bind('<ButtonPress-3>', on_b3_press)
+canvas.bind('<B3-Motion>', on_b3_motion)
+
 canvas.bind('<MouseWheel>', on_windows_zoom)
-#root.wm_state('zoomed')
+root.wm_state('zoomed')
 root.mainloop()
 
