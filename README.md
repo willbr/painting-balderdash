@@ -3,13 +3,18 @@ silly paint program
 
 ![screenshot of a face](/Screenshot%202023-03-26%20134615.png?raw=true)
 
-# todo
+# done
 
 * scrolling
+* zoom
+* brush size cursor
+
+# todo
+
+* limit scroll region
 * load and saving (sqlite?)
 * layers
 * line tool?
 * colour picker
 * brush size
-* brush size cursor
-* zoom
+

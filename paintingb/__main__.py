@@ -83,6 +83,8 @@ def clear_canvas():
 
 clear_button.config(command=clear_canvas)
 
+#brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='black', fill='blue', width=2)
+brush_cursor_id = canvas.create_oval(0, 0, 0, 0, fill=brush_color, width=0)
 
 def paint_first(event):
     global line_points
@@ -90,6 +92,7 @@ def paint_first(event):
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     line_points = [x,y,x,y]
 
+    canvas.itemconfig(brush_cursor_id, state='hidden')
     line_id = canvas.create_line(
             x, y,
             x, y,
@@ -114,6 +117,13 @@ def paint(event):
     line_points.extend((x,y))
     #print(len(line_points))
     canvas.coords(line_id, line_points)
+
+
+def paint_end(event):
+    canvas.itemconfig(brush_cursor_id, state='normal')
+    canvas.tag_raise(brush_cursor_id)
+    update_brush_cursor(event)
+    on_canvas_resize(event)
 
 
 def on_canvas_resize(event=None):
@@ -164,6 +174,9 @@ def on_windows_zoom(event):
     else:
         zoom(x, y, -1)
 
+    update_brush_cursor(event)
+
+
 def zoom(x, y, step):
     global zoom_level
 
@@ -175,6 +188,7 @@ def zoom(x, y, step):
 
     if prev_level == next_level:
         return
+
 
     prev_zoom_scale = zoom_scales[prev_level]
     next_zoom_scale = zoom_scales[next_level]
@@ -201,13 +215,24 @@ def zoom(x, y, step):
 def echo_event(event):
     print(event)
 
-canvas.config(cursor='crosshair')
+def update_brush_cursor(event):
+    #print(event)
+    r = brush_size / 2
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+    x0, y0 = x - r, y - r
+    x1, y1 = x + r, y + r
+    #canvas.itemconfig(brush_cursor_id, state='normal')
+    canvas.coords(brush_cursor_id, x0, y0, x1, y1)
+
+#canvas.config(cursor='crosshair')
+canvas.config(cursor='none')
 
 canvas.bind('<Configure>', on_canvas_resize)
 
 canvas.bind('<ButtonPress-1>', paint_first)
 canvas.bind('<B1-Motion>', paint)
-canvas.bind('<ButtonRelease-1>', on_canvas_resize)
+canvas.bind('<Motion>', update_brush_cursor)
+canvas.bind('<ButtonRelease-1>', paint_end)
 
 #canvas.bind('<ButtonPress-2>', echo_event)
 #canvas.bind('<B2-Motion>', echo_event)
