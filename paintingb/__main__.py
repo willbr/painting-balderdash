@@ -37,6 +37,9 @@ for k, v in colours:
     btn = Button(toolbox, text=k, command=set_colour(v))
     btn.pack(side=TOP, padx=10, pady=10)
 
+zoom_label = Label(toolbox, text=f'{zoom_level*100:4.2f}%')
+zoom_label.pack(side=TOP, padx=10, pady=10)
+
 clear_button = Button(toolbox, text='Clear',)
 clear_button.pack(side=BOTTOM, padx=10, pady=10)
 
@@ -145,17 +148,19 @@ def on_windows_zoom(event):
     else:
         zoom_out(x, y)
 
-zoom_in_scale  = 1.2
-zoom_out_scale = 0.8
+zoom_step  = 1.6
 
 def zoom_in(x, y):
     global zoom_level
 
-    if zoom_level > 10:
+    if zoom_level > 9:
         return
+
+    zoom_in_scale = zoom_step
 
     zoom_level *= zoom_in_scale
     #print(zoom_level)
+    zoom_label.configure(text=f'{zoom_level*100:4.2f}%')
 
     canvas.scale('all', x,y, zoom_in_scale, zoom_in_scale)
 
@@ -173,7 +178,10 @@ def zoom_out(x, y):
     if zoom_level < 0.10:
         return
 
+    zoom_out_scale = 1 / zoom_step
+
     zoom_level *= zoom_out_scale
+    zoom_label.configure(text=f'{zoom_level*100:4.2f}%')
     #print(zoom_level)
 
     canvas.scale('all', x,y, zoom_out_scale, zoom_out_scale)
@@ -183,6 +191,7 @@ def zoom_out(x, y):
             current_width = float(canvas.itemcget(item_id, 'width'))
             new_width = current_width * zoom_out_scale
             canvas.itemconfig(item_id, width=new_width)
+
 
 def echo_event(event):
     print(event)
