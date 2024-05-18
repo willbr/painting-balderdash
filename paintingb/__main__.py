@@ -4,7 +4,23 @@ from math import sqrt
 
 background_colour = '#aaa'
 
-zoom_level = 1
+zoom_level = 5
+zoom_scales = [
+    0.1,
+    0.25,
+    0.333,
+    0.5,
+    0.667,
+    1,
+    1.5,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+]
+
 line_points = None
 line_id = None
 
@@ -37,7 +53,7 @@ for k, v in colours:
     btn = Button(toolbox, text=k, command=set_colour(v))
     btn.pack(side=TOP, padx=10, pady=10)
 
-zoom_label = Label(toolbox, text=f'{zoom_level*100:4.2f}%')
+zoom_label = Label(toolbox, text=f'100%')
 zoom_label.pack(side=TOP, padx=10, pady=10)
 
 clear_button = Button(toolbox, text='Clear',)
@@ -144,52 +160,41 @@ def on_windows_zoom(event):
     y = canvas.canvasy(event.y)
 
     if event.delta > 0:
-        zoom_in(x, y)
+        zoom(x, y, 1)
     else:
-        zoom_out(x, y)
+        zoom(x, y, -1)
 
-zoom_step  = 1.6
-
-def zoom_in(x, y):
+def zoom(x, y, step):
     global zoom_level
 
-    if zoom_level > 9:
+    # if zoom_level > 9:
+    #    return
+
+    prev_level = zoom_level
+    next_level = min(max(0, zoom_level + step), len(zoom_scales)-1)
+
+    if prev_level == next_level:
         return
 
-    zoom_in_scale = zoom_step
+    prev_zoom_scale = zoom_scales[prev_level]
+    next_zoom_scale = zoom_scales[next_level]
+    #print(f'{prev_zoom_scale=}, {next_zoom_scale=}')
 
-    zoom_level *= zoom_in_scale
-    #print(zoom_level)
-    zoom_label.configure(text=f'{zoom_level*100:4.2f}%')
+    zoom_step_scale = next_zoom_scale / prev_zoom_scale
+    #print(f'{zoom_step_scale=}')
 
-    canvas.scale('all', x,y, zoom_in_scale, zoom_in_scale)
+    zoom_level += step
+    #print(f'{zoom_level=}')
+
+    zoom_label.configure(text=f'{next_zoom_scale*100:4.2f}%')
+
+    canvas.scale('all', x,y, zoom_step_scale, zoom_step_scale)
 
     all_items = canvas.find_all()
     for item_id in all_items:
         if canvas.type(item_id) == 'line':
             current_width = float(canvas.itemcget(item_id, 'width'))
-            new_width = current_width * zoom_in_scale
-            canvas.itemconfig(item_id, width=new_width)
-
-
-def zoom_out(x, y):
-    global zoom_level
-
-    if zoom_level < 0.10:
-        return
-
-    zoom_out_scale = 1 / zoom_step
-
-    zoom_level *= zoom_out_scale
-    zoom_label.configure(text=f'{zoom_level*100:4.2f}%')
-    #print(zoom_level)
-
-    canvas.scale('all', x,y, zoom_out_scale, zoom_out_scale)
-    all_items = canvas.find_all()
-    for item_id in all_items:
-        if canvas.type(item_id) == 'line':
-            current_width = float(canvas.itemcget(item_id, 'width'))
-            new_width = current_width * zoom_out_scale
+            new_width = current_width * zoom_step_scale
             canvas.itemconfig(item_id, width=new_width)
 
 
