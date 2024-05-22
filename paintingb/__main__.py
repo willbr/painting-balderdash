@@ -24,8 +24,6 @@ zoom_scales = [
 line_points = None
 line_id = None
 
-brush_size = 20
-brush_color = '#8B88EF'
 
 root = Tk()
 root.geometry('800x600')
@@ -47,6 +45,7 @@ def set_colour(colour):
     def fn():
         global brush_color
         brush_color = colour
+        canvas.itemconfig(brush_cursor_id, fill=colour)
     return fn
 
 for k, v in colours:
@@ -78,17 +77,25 @@ canvas.pack(side=LEFT, fill=BOTH, expand=YES)
 hscrollbar.config(command=canvas.xview)
 vscrollbar.config(command=canvas.yview)
 
+brush_size = 20
+brush_color = '#8B88EF'
+
 def clear_canvas():
+    global brush_cursor_id
     canvas.delete('all')
+    #brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='black', fill='blue', width=2)
+    brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='grey', fill=brush_color, width=0)
 
 clear_button.config(command=clear_canvas)
 
-#brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='black', fill='blue', width=2)
-brush_cursor_id = canvas.create_oval(0, 0, 0, 0, fill=brush_color, width=0)
+
+clear_canvas()
 
 def paint_first(event):
     global line_points
     global line_id
+    #echo_event(event)
+
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     line_points = [x,y,x,y]
 
@@ -120,6 +127,9 @@ def paint(event):
 
 
 def paint_end(event):
+    #echo_event(event)
+    num_points = len(line_points)
+    print(f'{num_points=}\n')
     canvas.itemconfig(brush_cursor_id, state='normal')
     canvas.tag_raise(brush_cursor_id)
     update_brush_cursor(event)
@@ -214,6 +224,7 @@ def zoom(x, y, step):
 
 def echo_event(event):
     print(event)
+    return "break"
 
 def update_brush_cursor(event):
     #print(event)
@@ -249,7 +260,54 @@ def on_b3_motion(event):
 canvas.bind('<ButtonPress-3>', on_b3_press)
 canvas.bind('<B3-Motion>', on_b3_motion)
 
+
+initial_brush_size = 0
+brush_size_last_x = 0
+brush_size_last_y = 0
+
+
+def on_alt_b3_press(event):
+    global brush_size_last_x
+    global brush_size_last_y
+    global initial_brush_size 
+
+    brush_size_last_x = event.x
+    brush_size_last_y = event.y
+
+    initial_brush_size = brush_size
+
+
+def on_alt_b3_motion(event):
+    global brush_size
+    delta_x = (event.x - brush_size_last_x) / 4
+    #print(delta_x)
+
+    brush_size = int(min(max(10, initial_brush_size + delta_x), 50))
+    #print(brush_size)
+
+    event.x = brush_size_last_x
+    event.y = brush_size_last_y
+
+    update_brush_cursor(event)
+
+
+def on_alt_b3_release(event):
+    print(f'{brush_size=}')
+    canvas.event_generate(
+            '<Motion>',
+            warp=True,
+            x=brush_size_last_x,
+            y=brush_size_last_y)
+
+
+canvas.bind('<Alt-ButtonPress-3>', on_alt_b3_press, add='+')
+canvas.bind('<Alt-B3-Motion>', on_alt_b3_motion, add='+')
+canvas.bind('<Alt-B3-ButtonRelease>', on_alt_b3_release, add='+')
+
+root.bind('<Alt_L>', lambda x: "break") # ignore key press
+
 canvas.bind('<MouseWheel>', on_windows_zoom)
+
 root.wm_state('zoomed')
 root.mainloop()
 

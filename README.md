@@ -14,7 +14,13 @@ silly paint program
 * limit scroll region
 * load and saving (sqlite?)
 * layers
-* line tool?
+* line tool
+* oval tool
+* rect tool
+* text tool
+* selection tool
+* groups
+* polygon tool
 * colour picker
 * brush size
 
