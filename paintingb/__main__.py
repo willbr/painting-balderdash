@@ -80,21 +80,21 @@ vscrollbar.config(command=canvas.yview)
 brush_size = 20
 brush_color = '#8B88EF'
 
-def clear_canvas():
+def clear_canvas(event=None):
     global brush_cursor_id
     canvas.delete('all')
-    #brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='black', fill='blue', width=2)
     brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='grey', fill=brush_color, width=0)
+    init_colour_pallete()
+    canvas.focus_set()
 
-clear_button.config(command=clear_canvas)
-
-
-clear_canvas()
 
 def paint_first(event):
     global line_points
     global line_id
     #echo_event(event)
+
+    if colour_pallete_visible:
+        return
 
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     line_points = [x,y,x,y]
@@ -114,6 +114,8 @@ def paint_first(event):
 
 
 def paint(event):
+    if line_points is None:
+        return
     last_x, last_y = line_points[-2:]
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
 
@@ -130,6 +132,8 @@ def paint(event):
 
 def paint_end(event):
     #echo_event(event)
+    if line_points is None:
+        return
     num_points = len(line_points)
     print(f'{num_points=}\n')
     canvas.itemconfig(brush_cursor_id, state='normal')
@@ -139,6 +143,7 @@ def paint_end(event):
 
 
 def on_canvas_resize(event=None):
+    #print('resize')
     bbox = canvas.bbox('all')
     window_width, window_height = canvas.winfo_width(), canvas.winfo_height()
 
@@ -214,9 +219,11 @@ def zoom(x, y, step):
 
     zoom_label.configure(text=f'{next_zoom_scale*100:4.2f}%')
 
-    canvas.scale('all', x,y, zoom_step_scale, zoom_step_scale)
+    #canvas.scale('all', x,y, zoom_step_scale, zoom_step_scale)
+    canvas.scale('!colours', x,y, zoom_step_scale, zoom_step_scale)
 
     all_items = canvas.find_all()
+
     for item_id in all_items:
         if canvas.type(item_id) == 'line':
             current_width = float(canvas.itemcget(item_id, 'width'))
@@ -307,6 +314,98 @@ canvas.bind('<Alt-B3-Motion>', on_alt_b3_motion, add='+')
 canvas.bind('<Alt-B3-ButtonRelease>', on_alt_b3_release, add='+')
 
 root.bind('<Alt_L>', lambda x: "break") # ignore key press
+
+
+colour_pallete_visible = False
+colour_pallete_pos = (0, 0)
+
+
+def init_colour_pallete():
+    global colour_pallete_visible
+    global colour_pallete_pos
+
+    colour_pallete_visible = False
+    colour_pallete_pos = (0, 0)
+
+    width  = 100
+    height = 100
+    step_x = width // 2
+    step_y = height // 2
+    x = -((len(colours) * width) // 2) + step_x
+    y = (height // 2) - step_y
+    for name, colour in colours:
+        canvas.create_rectangle(x - step_x, y - step_y, x+step_x, y+step_y, fill=colour, tags='colours', state='hidden')
+        x += width
+
+
+
+def update_colour_pallete(cursor_x, cursor_y):
+    global colour_pallete_pos
+    old_x, old_y = colour_pallete_pos
+    diff_x = cursor_x - old_x
+    diff_y = cursor_y - old_y
+
+    #print(f'{(old_x, old_y)=}')
+    #print(f'{(cursor_x, cursor_y)=}')
+    #print(f'{(diff_x, diff_y)=}\n')
+
+    colour_ids = canvas.find_withtag("colours")
+    for colour_id in colour_ids:
+        canvas.move(colour_id, diff_x, diff_y)
+        canvas.tag_raise(colour_id)
+
+    colour_pallete_pos = (cursor_x, cursor_y)
+
+
+def show_colour_pallete(event):
+    global colour_pallete_visible
+    if colour_pallete_visible:
+        #print('skip show')
+        return
+    canvas.itemconfigure('colours', state='normal')
+    canvas.config(cursor='crosshair')
+    colour_pallete_visible = True
+
+    #print(f'{(event.x, event.y)=}')
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+    update_colour_pallete(x, y)
+
+
+def hide_colour_pallete(event):
+    global colour_pallete_visible
+    global brush_color
+
+    #colour_ids = canvas.find_withtag("current && colours")
+    colour_ids = canvas.find_withtag("current")
+    if colour_ids:
+        #print(colour_ids)
+        #assert len(colour_ids) == 1
+        colour_id = colour_ids[0]
+        #print(colour_id)
+
+        new_colour = canvas.itemcget(colour_id, 'fill')
+        #print(new_colour)
+
+        brush_color = new_colour
+        canvas.itemconfig(brush_cursor_id, fill=new_colour)
+    else:
+        print('no ids')
+
+
+    canvas.itemconfigure('colours', state='hidden')
+    canvas.config(cursor='none')
+    colour_pallete_visible = False
+
+clear_button.config(command=clear_canvas)
+
+
+clear_canvas()
+
+
+root.bind('<KeyPress-f>', show_colour_pallete)
+root.bind('<KeyRelease-f>', hide_colour_pallete)
+
+root.bind('<KeyPress-Escape>', clear_canvas)
 
 canvas.bind('<MouseWheel>', on_windows_zoom)
 
