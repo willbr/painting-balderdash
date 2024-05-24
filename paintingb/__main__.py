@@ -117,9 +117,11 @@ def paint(event):
     last_x, last_y = line_points[-2:]
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
 
-    distance = sqrt((x - last_x) ** 2 + (y - last_y) ** 2)
-    if distance < brush_size // 2:
-        return
+    if brush_size < 10:
+        # makes large brushed laggy
+        distance = sqrt((x - last_x) ** 2 + (y - last_y) ** 2)
+        if distance < brush_size // 2:
+            return
 
     line_points.extend((x,y))
     #print(len(line_points))
@@ -282,7 +284,7 @@ def on_alt_b3_motion(event):
     delta_x = (event.x - brush_size_last_x) / 4
     #print(delta_x)
 
-    brush_size = int(min(max(10, initial_brush_size + delta_x), 50))
+    brush_size = int(min(max(10, initial_brush_size + delta_x), 500))
     #print(brush_size)
 
     event.x = brush_size_last_x
