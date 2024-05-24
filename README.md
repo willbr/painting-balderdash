@@ -8,19 +8,26 @@ silly paint program
 * scrolling
 * zoom
 * brush size cursor
+* brush size
+* colour picker
 
 # todo
 
 * limit scroll region
+
 * load and saving (sqlite?)
+
 * layers
+* groups
+
 * line tool
 * oval tool
 * rect tool
 * text tool
 * selection tool
-* groups
 * polygon tool
-* colour picker
-* brush size
+
+* undo & redo
+
+* record events & timestamp for reply?
 
