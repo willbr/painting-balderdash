@@ -64,20 +64,35 @@ current_tool = None
 undo_stack = []
 redo_stack = []
 
+brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='grey', fill=brush_color, width=0)
+
 def set_brush_size(new_size):
     global brush_size
     global brush_size_on_canvas
-    brush_size = int(min(max(8, new_size), 200))
+    brush_size = int(min(max(2, new_size), 200))
     brush_label.configure(text=f'{brush_size:3d}')
     brush_size_on_canvas = int(max(2, brush_size * zoom_scales[zoom_level]))
     brush_size_on_canvas -= brush_size_on_canvas % 2 # bugfix; removes shimmering artifacts
     #print(f'{brush_size_on_canvas=}')
 
 
+def get_visible_ids():
+    ignore_list = list(canvas.find_withtag('colours'))
+    ignore_list.append(brush_cursor_id)
+    #visible_ids = set(canvas.find_all()) - set(ignore_list)
+    all_items = canvas.find_all()
+    visible_ids = {item for item in all_items if canvas.itemcget(item, 'state') != 'hidden'} - set(ignore_list)
+    return visible_ids
+
+
 def clear_canvas(event=None):
-    global brush_cursor_id
-    canvas.delete('all')
-    brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='grey', fill=brush_color, width=0)
+    visible_ids = get_visible_ids()
+    #print(visible_ids)
+    for object_id in visible_ids:
+        canvas.itemconfig(object_id, state='hidden')
+
+    undo_stack.append(('clear', visible_ids))
+
     init_colour_pallete()
     canvas.focus_set()
 
@@ -142,7 +157,7 @@ def paint_end(event):
     update_brush_cursor(event)
     on_canvas_resize(event)
 
-    undo_stack.append(('line', line_id))
+    undo_stack.append(('line', (line_id,)))
     redo_stack.clear()
 
 
@@ -498,10 +513,19 @@ def start_undoing(event):
 
     #print(undo_stack)
     action = undo_stack.pop()
-    action_type, object_id = action
+    print(action)
+    action_type, object_ids = action
     ##print(f'deleting{object_id=}')
     #canvas.delete(object_id)
-    canvas.itemconfig(object_id, state='hidden')
+    match action_type:
+        case 'clear':
+            new_state ='normal'
+        case _:
+            new_state = 'hidden'
+
+    for object_id in object_ids:
+        canvas.itemconfig(object_id, state=new_state)
+
     redo_stack.append(action)
 
 
@@ -513,10 +537,19 @@ def start_redoing(event):
 
     #print(redo_stack)
     action = redo_stack.pop()
-    action_type, object_id = action
+    print(action)
+    action_type, object_ids = action
     ##print(f'deleting{object_id=}')
-    #canvas.delete(object_id)
-    canvas.itemconfig(object_id, state='normal')
+
+    match action_type:
+        case 'clear':
+            new_state ='hidden'
+        case _:
+            new_state = 'normal'
+
+    for object_id in object_ids:
+        canvas.itemconfig(object_id, state=new_state)
+
     undo_stack.append(action)
 
 
@@ -593,6 +626,6 @@ root.bind('<KeyPress-Escape>', clear_canvas)
 
 canvas.bind('<MouseWheel>', on_windows_zoom)
 
-#root.wm_state('zoomed')
+root.wm_state('zoomed')
 root.mainloop()
 
