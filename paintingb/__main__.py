@@ -61,6 +61,8 @@ brush_color = '#8B88EF'
 
 current_tool = None
 
+undo_stack = []
+
 def set_brush_size(new_size):
     global brush_size
     global brush_size_on_canvas
@@ -138,6 +140,7 @@ def paint_end(event):
     canvas.tag_raise(brush_cursor_id)
     update_brush_cursor(event)
     on_canvas_resize(event)
+    undo_stack.append(('line', line_id))
 
 
 def on_canvas_resize(event=None):
@@ -485,6 +488,13 @@ def end_tool(tool_name, warp_back):
     return fn
 
 
+def start_undoing(event):
+    print(undo_stack)
+    action_type, object_id = undo_stack.pop()
+    print(f'deleting{object_id=}')
+    canvas.delete(object_id)
+
+
 tools = {
     'brush': {
         'start':  paint_start,
@@ -511,10 +521,9 @@ tools = {
     'zoom': {
         'start':  start_zooming,
         'motion': motion_zooming,
-        'end':    lambda e: None,
     },
     'undo': {
-        'start': lambda e: None,
+        'start': start_undoing,
     },
     'redo': {
         'start': lambda e: None,
@@ -531,6 +540,7 @@ def zoom_to_level(target_level):
         zoom(x, y, delta)
         return
     return fn
+
 
 root.bind('<ButtonPress-1>', start_tool('brush'))
 root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
@@ -553,7 +563,7 @@ root.bind('<KeyPress-3>', zoom_to_level(7))
 root.bind('<KeyPress-4>', zoom_to_level(9))
 root.bind('<KeyPress-5>', zoom_to_level(13))
 
-root.bind('<KeyPress-u>', start_tool('undo'))
+root.bind('<KeyPress-u>', start_undoing)
 root.bind('<KeyPress-y>', start_tool('redo'))
 
 root.bind('<KeyPress-space>', start_tool('pan'))
