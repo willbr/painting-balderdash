@@ -16,6 +16,8 @@ silly paint program
 * limit scroll region
 
 * load and saving (sqlite?)
+* keep all drawings in a notebook
+* replace clear, with new page
 
 * layers
 * groups
