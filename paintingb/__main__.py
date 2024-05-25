@@ -41,6 +41,9 @@ colours = [
 ]
 
 
+brush_label = Label(toolbox, text=f'N')
+brush_label.pack(side=TOP, padx=10, pady=10)
+
 zoom_label = Label(toolbox, text=f'100%')
 zoom_label.pack(side=TOP, padx=10, pady=10)
 
@@ -62,8 +65,17 @@ canvas.pack(side=LEFT, fill=BOTH, expand=YES)
 hscrollbar.config(command=canvas.xview)
 vscrollbar.config(command=canvas.yview)
 
-brush_size = 20
+brush_size = None
 brush_color = '#8B88EF'
+
+
+def set_brush_size(new_size):
+    global brush_size
+    brush_size = int(min(max(2, new_size), 500))
+    brush_size -= brush_size % 2 # bugfix; removes shimmering artifacts
+    adjusted_brush_size = brush_size / zoom_scales[zoom_level]
+    brush_label.configure(text=f'{adjusted_brush_size:3.0f}')
+
 
 def clear_canvas(event=None):
     global brush_cursor_id
@@ -74,7 +86,10 @@ def clear_canvas(event=None):
 
     target_level = 5
     diff = target_level - zoom_level
+
     zoom(0, 0, diff)
+
+    set_brush_size(10)
 
 
 def paint_first(event):
@@ -219,6 +234,8 @@ def zoom(x, y, step):
             new_width = current_width * zoom_step_scale
             canvas.itemconfig(item_id, width=new_width)
 
+    set_brush_size(brush_size * zoom_step_scale)
+
 
 def echo_event(event):
     print(event)
@@ -280,9 +297,7 @@ def on_alt_b3_motion(event):
     delta_x = (event.x - brush_size_last_x) / 4
     #print(delta_x)
 
-    brush_size = int(min(max(10, initial_brush_size + delta_x), 500))
-    brush_size += brush_size % 2 # bugfix; removes shimmering artifacts
-    #print(brush_size)
+    set_brush_size(initial_brush_size + delta_x)
 
     event.x = brush_size_last_x
     event.y = brush_size_last_y
