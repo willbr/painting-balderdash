@@ -292,6 +292,7 @@ def on_alt_b3_motion(event):
     #print(delta_x)
 
     brush_size = int(min(max(10, initial_brush_size + delta_x), 500))
+    brush_size += brush_size % 2 # bugfix; removes shimmering artifacts
     #print(brush_size)
 
     event.x = brush_size_last_x
