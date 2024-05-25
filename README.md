@@ -31,3 +31,5 @@ silly paint program
 
 * record events & timestamp for reply?
 
+* record camera panning & zooming
+
