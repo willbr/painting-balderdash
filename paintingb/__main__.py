@@ -62,6 +62,7 @@ brush_color = '#8B88EF'
 current_tool = None
 
 undo_stack = []
+redo_stack = []
 
 def set_brush_size(new_size):
     global brush_size
@@ -140,7 +141,9 @@ def paint_end(event):
     canvas.tag_raise(brush_cursor_id)
     update_brush_cursor(event)
     on_canvas_resize(event)
+
     undo_stack.append(('line', line_id))
+    redo_stack.clear()
 
 
 def on_canvas_resize(event=None):
@@ -489,10 +492,33 @@ def end_tool(tool_name, warp_back):
 
 
 def start_undoing(event):
-    print(undo_stack)
-    action_type, object_id = undo_stack.pop()
-    print(f'deleting{object_id=}')
-    canvas.delete(object_id)
+    if not undo_stack:
+        print('nothing to undo')
+        return
+
+    #print(undo_stack)
+    action = undo_stack.pop()
+    action_type, object_id = action
+    ##print(f'deleting{object_id=}')
+    #canvas.delete(object_id)
+    canvas.itemconfig(object_id, state='hidden')
+    redo_stack.append(action)
+
+
+
+def start_redoing(event):
+    if not redo_stack:
+        print('nothing to redo')
+        return
+
+    #print(redo_stack)
+    action = redo_stack.pop()
+    action_type, object_id = action
+    ##print(f'deleting{object_id=}')
+    #canvas.delete(object_id)
+    canvas.itemconfig(object_id, state='normal')
+    undo_stack.append(action)
+
 
 
 tools = {
@@ -521,12 +547,6 @@ tools = {
     'zoom': {
         'start':  start_zooming,
         'motion': motion_zooming,
-    },
-    'undo': {
-        'start': start_undoing,
-    },
-    'redo': {
-        'start': lambda e: None,
     },
 }
 
@@ -564,7 +584,7 @@ root.bind('<KeyPress-4>', zoom_to_level(9))
 root.bind('<KeyPress-5>', zoom_to_level(13))
 
 root.bind('<KeyPress-u>', start_undoing)
-root.bind('<KeyPress-y>', start_tool('redo'))
+root.bind('<KeyPress-y>', start_redoing)
 
 root.bind('<KeyPress-space>', start_tool('pan'))
 root.bind('<KeyRelease-space>', end_tool('pan', warp_back=True))
@@ -573,6 +593,6 @@ root.bind('<KeyPress-Escape>', clear_canvas)
 
 canvas.bind('<MouseWheel>', on_windows_zoom)
 
-root.wm_state('zoomed')
+#root.wm_state('zoomed')
 root.mainloop()
 
