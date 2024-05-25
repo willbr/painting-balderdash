@@ -41,23 +41,8 @@ colours = [
 ]
 
 
-def set_colour(colour):
-    def fn():
-        global brush_color
-        brush_color = colour
-        canvas.itemconfig(brush_cursor_id, fill=colour)
-    return fn
-
-for k, v in colours:
-    btn = Button(toolbox, text=k, command=set_colour(v))
-    btn.pack(side=TOP, padx=10, pady=10)
-
 zoom_label = Label(toolbox, text=f'100%')
 zoom_label.pack(side=TOP, padx=10, pady=10)
-
-clear_button = Button(toolbox, text='Clear',)
-clear_button.pack(side=BOTTOM, padx=10, pady=10)
-
 
 frame = Frame(root)
 frame.pack(fill=BOTH, expand=YES, padx=0, pady=0)
@@ -86,6 +71,10 @@ def clear_canvas(event=None):
     brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='grey', fill=brush_color, width=0)
     init_colour_pallete()
     canvas.focus_set()
+
+    target_level = 5
+    diff = target_level - zoom_level
+    zoom(0, 0, diff)
 
 
 def paint_first(event):
@@ -346,9 +335,9 @@ def update_colour_pallete(cursor_x, cursor_y):
     diff_x = cursor_x - old_x
     diff_y = cursor_y - old_y
 
-    #print(f'{(old_x, old_y)=}')
-    #print(f'{(cursor_x, cursor_y)=}')
-    #print(f'{(diff_x, diff_y)=}\n')
+    print(f'{(old_x, old_y)=}')
+    print(f'{(cursor_x, cursor_y)=}')
+    print(f'{(diff_x, diff_y)=}\n')
 
     colour_ids = canvas.find_withtag("colours")
     for colour_id in colour_ids:
@@ -396,8 +385,6 @@ def hide_colour_pallete(event):
     canvas.itemconfigure('colours', state='hidden')
     canvas.config(cursor='none')
     colour_pallete_visible = False
-
-clear_button.config(command=clear_canvas)
 
 
 clear_canvas()
