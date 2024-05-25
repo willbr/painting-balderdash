@@ -10,6 +10,8 @@ silly paint program
 * brush size cursor
 * brush size
 * colour picker
+* undo & redo
+
 
 # todo
 
@@ -28,8 +30,6 @@ silly paint program
 * text tool
 * selection tool
 * polygon tool
-
-* undo & redo
 
 * record events & timestamp for reply?
 
