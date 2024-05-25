@@ -6,19 +6,9 @@ background_colour = '#aaa'
 
 zoom_level = 5
 zoom_scales = [
-    0.1,
-    0.25,
-    0.333,
-    0.5,
-    0.667,
+    0.1, 0.25, 0.333, 0.5, 0.667,
     1,
-    1.5,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
+    1.5, 2, 3, 4, 5, 6, 7,
 ]
 
 line_points = None
@@ -44,7 +34,7 @@ colours = [
 brush_label = Label(toolbox, text=f'N')
 brush_label.pack(side=TOP, padx=10, pady=10)
 
-zoom_label = Label(toolbox, text=f'100%')
+zoom_label = Label(toolbox, text=f' 100.00%')
 zoom_label.pack(side=TOP, padx=10, pady=10)
 
 frame = Frame(root)
@@ -66,15 +56,19 @@ hscrollbar.config(command=canvas.xview)
 vscrollbar.config(command=canvas.yview)
 
 brush_size = None
+brush_size_on_canvas = None
 brush_color = '#8B88EF'
 
+current_tool = None
 
 def set_brush_size(new_size):
     global brush_size
-    brush_size = int(min(max(2, new_size), 500))
-    brush_size -= brush_size % 2 # bugfix; removes shimmering artifacts
-    adjusted_brush_size = brush_size / zoom_scales[zoom_level]
-    brush_label.configure(text=f'{adjusted_brush_size:3.0f}')
+    global brush_size_on_canvas
+    brush_size = int(min(max(8, new_size), 200))
+    brush_label.configure(text=f'{brush_size:3d}')
+    brush_size_on_canvas = int(max(2, brush_size * zoom_scales[zoom_level]))
+    brush_size_on_canvas -= brush_size_on_canvas % 2 # bugfix; removes shimmering artifacts
+    print(f'{brush_size_on_canvas=}')
 
 
 def clear_canvas(event=None):
@@ -89,10 +83,10 @@ def clear_canvas(event=None):
 
     zoom(0, 0, diff)
 
-    set_brush_size(10)
+    set_brush_size(14)
 
 
-def paint_first(event):
+def paint_start(event):
     global line_points
     global line_id
     #echo_event(event)
@@ -108,25 +102,25 @@ def paint_first(event):
             x, y,
             x, y,
             fill=brush_color,
-            width=brush_size,
+            width=brush_size_on_canvas,
             joinstyle='round',
             capstyle=ROUND,
             smooth=False, # it's too slow, once you have lots of things on screen
                           # maybe try disabling it while scrolling?
             )
-    paint(event)
+    paint_motion(event)
 
 
-def paint(event):
+def paint_motion(event):
     if line_points is None:
         return
     last_x, last_y = line_points[-2:]
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
 
-    if brush_size < 10:
+    if brush_size_on_canvas < 10:
         # makes large brushed laggy
         distance = sqrt((x - last_x) ** 2 + (y - last_y) ** 2)
-        if distance < brush_size // 2:
+        if distance < brush_size_on_canvas // 2:
             return
 
     line_points.extend((x,y))
@@ -139,7 +133,7 @@ def paint_end(event):
     if line_points is None:
         return
     num_points = len(line_points)
-    print(f'{num_points=}\n')
+    #print(f'{num_points=}\n')
     canvas.itemconfig(brush_cursor_id, state='normal')
     canvas.tag_raise(brush_cursor_id)
     update_brush_cursor(event)
@@ -234,7 +228,7 @@ def zoom(x, y, step):
             new_width = current_width * zoom_step_scale
             canvas.itemconfig(item_id, width=new_width)
 
-    set_brush_size(brush_size * zoom_step_scale)
+    set_brush_size(brush_size)
 
 
 def echo_event(event):
@@ -243,70 +237,65 @@ def echo_event(event):
 
 def update_brush_cursor(event):
     #print(event)
-    r = brush_size / 2
+    r = brush_size_on_canvas / 2
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     x0, y0 = x - r, y - r
     x1, y1 = x + r, y + r
     #canvas.itemconfig(brush_cursor_id, state='normal')
     canvas.coords(brush_cursor_id, x0, y0, x1, y1)
 
+
+def motion(event):
+    update_brush_cursor(event)
+
+    #print(f'{current_tool=}')
+    tool_spec = tools.get(current_tool, None)
+    if tool_spec is None:
+        return
+
+    tool_fn = tools[current_tool].get('motion', None)
+    if tool_fn is None:
+        return
+
+    tool_fn(event)
+
+
 #canvas.config(cursor='crosshair')
 canvas.config(cursor='none')
 
 canvas.bind('<Configure>', on_canvas_resize)
 
-canvas.bind('<ButtonPress-1>', paint_first)
-canvas.bind('<B1-Motion>', paint)
-canvas.bind('<Motion>', update_brush_cursor)
-canvas.bind('<ButtonRelease-1>', paint_end)
+canvas.bind('<Motion>', motion)
 
 #canvas.bind('<ButtonPress-2>', echo_event)
 #canvas.bind('<B2-Motion>', echo_event)
 #canvas.bind('<ButtonRelease-2>', echo_event)
 
-def on_b3_press(event):
+def start_panning(event):
     x, y = event.x, event.y
     canvas.scan_mark(x, y)
 
-def on_b3_motion(event):
+def motion_panning(event):
     x, y = event.x, event.y
     canvas.scan_dragto(x, y, gain=1)
 
-canvas.bind('<ButtonPress-3>', on_b3_press)
-canvas.bind('<B3-Motion>', on_b3_motion)
+canvas.bind('<ButtonPress-3>', start_panning)
+canvas.bind('<B3-Motion>', motion_panning)
 
 
 initial_brush_size = 0
 brush_size_last_x = 0
 brush_size_last_y = 0
 
-
-def on_alt_b3_press(event):
+def save_cursor_position(event):
     global brush_size_last_x
     global brush_size_last_y
-    global initial_brush_size 
-
     brush_size_last_x = event.x
     brush_size_last_y = event.y
 
-    initial_brush_size = brush_size
 
-
-def on_alt_b3_motion(event):
-    global brush_size
-    delta_x = (event.x - brush_size_last_x) / 4
-    #print(delta_x)
-
-    set_brush_size(initial_brush_size + delta_x)
-
-    event.x = brush_size_last_x
-    event.y = brush_size_last_y
-
-    update_brush_cursor(event)
-
-
-def on_alt_b3_release(event):
-    print(f'{brush_size=}')
+def restore_cursor_position(event):
+    print('warping cursor')
     canvas.event_generate(
             '<Motion>',
             warp=True,
@@ -314,9 +303,35 @@ def on_alt_b3_release(event):
             y=brush_size_last_y)
 
 
-canvas.bind('<Alt-ButtonPress-3>', on_alt_b3_press, add='+')
-canvas.bind('<Alt-B3-Motion>', on_alt_b3_motion, add='+')
-canvas.bind('<Alt-B3-ButtonRelease>', on_alt_b3_release, add='+')
+def on_alt_b3_press(event):
+    global initial_brush_size 
+    initial_brush_size = brush_size
+
+    save_cursor_position(event)
+
+
+def on_alt_b3_motion(event):
+    delta_x = (event.x - brush_size_last_x) / 4
+    #delta_y = (event.y - brush_size_last_y) / 4
+
+    set_brush_size(initial_brush_size + delta_x)
+
+    event.x = brush_size_last_x
+    event.y = brush_size_last_y
+
+    update_brush_cursor(event)
+    return 'break'
+
+
+
+def on_alt_b3_release(event):
+    print(f'{brush_size=}')
+    restore_cursor_position(event)
+
+
+#canvas.bind('<Alt-ButtonPress-3>', on_alt_b3_press, add='+')
+#canvas.bind('<Alt-B3-Motion>', on_alt_b3_motion, add='+')
+#canvas.bind('<Alt-B3-ButtonRelease>', on_alt_b3_release, add='+')
 
 root.bind('<Alt_L>', lambda x: "break") # ignore key press
 
@@ -332,8 +347,8 @@ def init_colour_pallete():
     colour_pallete_visible = False
     colour_pallete_pos = (0, 0)
 
-    width  = 100
-    height = 100
+    width  = 60
+    height = 60
     step_x = width // 2
     step_y = height // 2
     x = -((len(colours) * width) // 2) + step_x
@@ -343,16 +358,15 @@ def init_colour_pallete():
         x += width
 
 
-
 def update_colour_pallete(cursor_x, cursor_y):
     global colour_pallete_pos
     old_x, old_y = colour_pallete_pos
     diff_x = cursor_x - old_x
     diff_y = cursor_y - old_y
 
-    print(f'{(old_x, old_y)=}')
-    print(f'{(cursor_x, cursor_y)=}')
-    print(f'{(diff_x, diff_y)=}\n')
+    #print(f'{(old_x, old_y)=}')
+    #print(f'{(cursor_x, cursor_y)=}')
+    #print(f'{(diff_x, diff_y)=}\n')
 
     colour_ids = canvas.find_withtag("colours")
     for colour_id in colour_ids:
@@ -396,17 +410,139 @@ def hide_colour_pallete(event):
     else:
         print('no ids')
 
-
     canvas.itemconfigure('colours', state='hidden')
     canvas.config(cursor='none')
     colour_pallete_visible = False
 
 
+initial_zoom = 0
+
+def start_zooming(event):
+    global initial_zoom
+    initial_zoom = zoom_level
+    #print(f'{initial_zoom=}')
+    pass
+
+
+def motion_zooming(event):
+    delta_x = (event.x - brush_size_last_x) // 4
+    #print(f'{delta_x=}')
+
+    delta_steps = delta_x // 20
+    #print(f'{delta_steps=}')
+
+    target_level = initial_zoom + delta_steps
+    #print(f'{target_level=} = {initial_zoom=} + {delta_steps=}')
+
+    x = canvas.canvasx(brush_size_last_x)
+    y = canvas.canvasy(brush_size_last_y)
+
+
+    if target_level > zoom_level:
+        zoom(x, y, +1)
+    elif target_level == zoom_level:
+        pass
+    else:
+        zoom(x, y, -1)
+        pass
+
+    return 'break'
+
+
+def start_tool(tool_name):
+    def fn(event):
+        global current_tool
+        #print(f'start_tool {tool_name=} {current_tool=}')
+        # TODO end old tool, then start
+        if tool_name == current_tool:
+            return
+        current_tool = tool_name
+        tool_fn = tools[tool_name]['start']
+        tool_fn(event)
+        save_cursor_position(event)
+    return fn
+
+
+def end_tool(tool_name, warp_back):
+    def fn(event):
+        global current_tool
+        #print(f'end_tool {tool_name=}')
+        if tool_name != current_tool:
+            raise ValueError(f'end tool: {tool_name=} != {current_tool=}')
+
+        current_tool = None
+
+        tool_fn = tools[tool_name].get('end', None)
+        if tool_fn is None:
+            print(f'no end fn for: {tool_name}')
+            return
+
+        tool_fn(event)
+
+        if warp_back:
+            restore_cursor_position(event)
+
+    return fn
+
+
+tools = {
+    'brush': {
+        'start':  paint_start,
+        'motion': paint_motion,
+        'end':    paint_end,
+    },
+    'color_pallete': {
+        'start':  show_colour_pallete,
+        'end':    hide_colour_pallete,
+    },
+    'tool_pallete': {
+        'start':  show_colour_pallete,
+        'end':    hide_colour_pallete,
+    },
+    'brush_size': {
+        'start':  on_alt_b3_press,
+        'motion': on_alt_b3_motion,
+        'end':    on_alt_b3_release,
+    },
+    'pan': {
+        'start':  start_panning,
+        'motion': motion_panning,
+    },
+    'zoom': {
+        'start':  start_zooming,
+        'motion': motion_zooming,
+        'end':    lambda e: None,
+    },
+    'undo': {
+        'start': lambda e: None,
+    },
+    'redo': {
+        'start': lambda e: None,
+    },
+}
+
 clear_canvas()
 
+root.bind('<ButtonPress-1>', start_tool('brush'))
+root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
 
-root.bind('<KeyPress-f>', show_colour_pallete)
-root.bind('<KeyRelease-f>', hide_colour_pallete)
+root.bind('<KeyPress-f>', start_tool('color_pallete'))
+root.bind('<KeyRelease-f>', end_tool('color_pallete', warp_back=True))
+
+root.bind('<KeyPress-d>', start_tool('tool_pallete'))
+root.bind('<KeyRelease-d>', end_tool('tool_pallete', warp_back=True))
+
+root.bind('<KeyPress-s>', start_tool('brush_size'))
+root.bind('<KeyRelease-s>', end_tool('brush_size', warp_back=True))
+
+root.bind('<KeyPress-v>', start_tool('zoom'))
+root.bind('<KeyRelease-v>', end_tool('zoom', warp_back=True))
+
+root.bind('<KeyPress-u>', start_tool('undo'))
+root.bind('<KeyPress-y>', start_tool('redo'))
+
+root.bind('<KeyPress-space>', start_tool('pan'))
+root.bind('<KeyRelease-space>', end_tool('pan', warp_back=True))
 
 root.bind('<KeyPress-Escape>', clear_canvas)
 
