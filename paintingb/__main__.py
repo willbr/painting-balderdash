@@ -8,7 +8,7 @@ zoom_level = 5
 zoom_scales = [
     0.1, 0.25, 0.333, 0.5, 0.667,
     1,
-    1.5, 2, 3, 4, 5, 6, 7,
+    1.5, 2, 3, 4, 5, 6, 7, 8,
 ]
 
 line_points = None
@@ -68,7 +68,7 @@ def set_brush_size(new_size):
     brush_label.configure(text=f'{brush_size:3d}')
     brush_size_on_canvas = int(max(2, brush_size * zoom_scales[zoom_level]))
     brush_size_on_canvas -= brush_size_on_canvas % 2 # bugfix; removes shimmering artifacts
-    print(f'{brush_size_on_canvas=}')
+    #print(f'{brush_size_on_canvas=}')
 
 
 def clear_canvas(event=None):
@@ -523,6 +523,15 @@ tools = {
 
 clear_canvas()
 
+def zoom_to_level(target_level):
+    def fn(event):
+        x = canvas.canvasx(event.x)
+        y = canvas.canvasy(event.y)
+        delta = target_level - zoom_level
+        zoom(x, y, delta)
+        return
+    return fn
+
 root.bind('<ButtonPress-1>', start_tool('brush'))
 root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
 
@@ -537,6 +546,12 @@ root.bind('<KeyRelease-s>', end_tool('brush_size', warp_back=True))
 
 root.bind('<KeyPress-v>', start_tool('zoom'))
 root.bind('<KeyRelease-v>', end_tool('zoom', warp_back=True))
+
+root.bind('<KeyPress-1>', zoom_to_level(3))
+root.bind('<KeyPress-2>', zoom_to_level(5))
+root.bind('<KeyPress-3>', zoom_to_level(7))
+root.bind('<KeyPress-4>', zoom_to_level(9))
+root.bind('<KeyPress-5>', zoom_to_level(13))
 
 root.bind('<KeyPress-u>', start_tool('undo'))
 root.bind('<KeyPress-y>', start_tool('redo'))
