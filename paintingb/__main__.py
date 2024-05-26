@@ -153,9 +153,11 @@ def paint_start(event):
 
 def sort_objects_by_layer():
     for layer_name in ['background', 'sketch', 'colour', 'outline']:
-        object_ids = canvas.find_withtag(layer_name)
-        for object_id in object_ids:
-            canvas.tag_raise(object_id)
+        canvas.tag_raise(layer_name)
+
+        #object_ids = canvas.find_withtag(layer_name)
+        #for object_id in object_ids:
+            #canvas.tag_raise(object_id)
 
 
 def paint_motion(event):
@@ -287,6 +289,7 @@ def zoom(x, y, step):
 def echo_event(event):
     print(event)
     return "break"
+
 
 def update_brush_cursor(event):
     #print(event)
