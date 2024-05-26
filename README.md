@@ -16,7 +16,6 @@ silly paint program
 
 # todo
 
-* refactor colour picker, delete when finished
 * limit scroll region
 * load and saving (sqlite?)
 * keep all drawings in a notebook

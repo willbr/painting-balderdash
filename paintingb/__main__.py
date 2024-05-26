@@ -125,9 +125,6 @@ def paint_start(event):
     global line_id
     #echo_event(event)
 
-    if colour_pallete_visible:
-        return
-
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     line_points = [x,y, x,y]
 
@@ -154,10 +151,6 @@ def paint_start(event):
 def sort_objects_by_layer():
     for layer_name in ['background', 'sketch', 'colour', 'outline']:
         canvas.tag_raise(layer_name)
-
-        #object_ids = canvas.find_withtag(layer_name)
-        #for object_id in object_ids:
-            #canvas.tag_raise(object_id)
 
 
 def paint_motion(event):
@@ -392,63 +385,32 @@ def on_alt_b3_release(event):
 root.bind('<Alt_L>', lambda x: "break") # ignore key press
 
 
-colour_pallete_visible = False
-colour_pallete_pos = (0, 0)
-
-
-def init_colour_pallete():
-    global colour_pallete_visible
-    global colour_pallete_pos
-
-    colour_pallete_visible = False
-    colour_pallete_pos = (0, 0)
+def show_colour_pallete(event):
+    canvas.config(cursor='crosshair')
 
     width  = 60
     height = 60
     step_x = width // 2
     step_y = height // 2
-    x = -((len(colours) * width) // 2) + step_x
-    y = (height // 2) - step_y
-    for name, colour in colours:
-        canvas.create_rectangle(x - step_x, y - step_y, x+step_x, y+step_y, fill=colour, tags='colours', state='hidden')
-        x += width
+    pallete_width = (len(colours) * width)
+    pallete_height = height
 
-init_colour_pallete()
-
-def update_colour_pallete(cursor_x, cursor_y):
-    global colour_pallete_pos
-    old_x, old_y = colour_pallete_pos
-    diff_x = cursor_x - old_x
-    diff_y = cursor_y - old_y
-
-    #print(f'{(old_x, old_y)=}')
-    #print(f'{(cursor_x, cursor_y)=}')
-    #print(f'{(diff_x, diff_y)=}\n')
-
-    colour_ids = canvas.find_withtag("colours")
-    for colour_id in colour_ids:
-        canvas.move(colour_id, diff_x, diff_y)
-        canvas.tag_raise(colour_id)
-
-    colour_pallete_pos = (cursor_x, cursor_y)
-
-
-def show_colour_pallete(event):
-    global colour_pallete_visible
-    if colour_pallete_visible:
-        #print('skip show')
-        return
-    canvas.itemconfigure('colours', state='normal')
-    canvas.config(cursor='crosshair')
-    colour_pallete_visible = True
-
-    #print(f'{(event.x, event.y)=}')
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
-    update_colour_pallete(x, y)
+    x -= (pallete_width // 2) - (step_x)
+
+    for name, colour in colours:
+        canvas.create_rectangle(
+                x - step_x,
+                y - step_y,
+                x+step_x,
+                y+step_y,
+                fill=colour,
+                tags='colour_pallete',
+                )
+        x += width
 
 
 def hide_colour_pallete(event):
-    global colour_pallete_visible
     global brush_color
 
     #colour_ids = canvas.find_withtag("current && colours")
@@ -467,10 +429,8 @@ def hide_colour_pallete(event):
     else:
         print('no ids')
 
-    canvas.itemconfigure('colours', state='hidden')
+    canvas.delete('colour_pallete')
     canvas.config(cursor='none')
-    colour_pallete_visible = False
-
 
 
 def render_layer_menu(x, y, step_x, step_y, name):
@@ -542,6 +502,13 @@ def render_layer_menu(x, y, step_x, step_y, name):
 
 
 def show_layer_pallete(event):
+    layer_object_ids = tuple(canvas.find_withtag('layer_pallete'))
+    #print(layer_object_ids)
+
+    if layer_object_ids:
+        print('skipping show layer pallete')
+        return
+
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     width = 320
     height = 60
@@ -587,14 +554,17 @@ def toggle_layer_visible(layer_name):
 def end_layer_pallete(event):
     global current_layer
     current = canvas.find_withtag("current")
-    object_id = current[0]
+    object_id = current[0] if current != () else None
 
     canvas.config(cursor='none')
 
-    if object_id != brush_cursor_id:
+    #print(f'{object_id=}')
+    if object_id is None:
+        pass
+    elif object_id != brush_cursor_id:
         tags = tuple(set(canvas.itemcget(object_id, 'tags').split(' ')) - set(('layer_pallete', 'current')))
         tag = tags[0]
-        #print(f'{object_id=} {tag=}')
+        print(f'{object_id=} {tag=}')
 
         layer_ids = None
 
@@ -616,9 +586,8 @@ def end_layer_pallete(event):
 
 
 def hide_layer_pallete():
-    layer_object_ids = list(canvas.find_withtag('layer_pallete'))
-    for object_id in layer_object_ids:
-        canvas.delete(object_id)
+    #print('hide_layer_pallete')
+    canvas.delete('layer_pallete')
 
 
 initial_zoom = 0
