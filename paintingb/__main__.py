@@ -60,10 +60,17 @@ brush_size_on_canvas = None
 brush_color = '#8B88EF'
 
 current_tool = None
-current_layer = 'sketch'
+current_layer = None
 
 undo_stack = []
 redo_stack = []
+
+layer = {
+        'outline': {'visible': True},
+        'colour': {'visible': True},
+        'sketch': {'visible': True},
+        'background': {'visible': True},
+        }
 
 brush_cursor_id = canvas.create_oval(0, 0, 0, 0, outline='grey', fill=brush_color, width=0)
 
@@ -87,6 +94,8 @@ def get_visible_ids(tag_name=None):
 
 
 def clear_canvas(event=None):
+    global current_layer
+
     visible_ids = get_visible_ids()
     #print(visible_ids)
     for object_id in visible_ids:
@@ -100,6 +109,13 @@ def clear_canvas(event=None):
     diff = target_level - zoom_level
 
     zoom(0, 0, diff)
+
+    current_layer = 'sketch'
+
+    layer['outline']['visible'] = True
+    layer['colour']['visible'] = True
+    layer['sketch']['visible'] = True
+    layer['background']['visible'] = True
 
     set_brush_size(14)
 
@@ -115,7 +131,9 @@ def paint_start(event):
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     line_points = [x,y, x,y]
 
+
     canvas.itemconfig(brush_cursor_id, state='hidden')
+
     line_id = canvas.create_line(
             x, y,
             x, y,
@@ -167,6 +185,9 @@ def paint_end(event):
     canvas.tag_raise(brush_cursor_id)
     update_brush_cursor(event)
     on_canvas_resize(event)
+
+    layer_state = 'normal' if layer[current_layer]['visible'] else 'hidden'
+    canvas.itemconfig(line_id, state=layer_state)
 
     undo_stack.append(('line', (line_id,)))
     redo_stack.clear()
@@ -448,12 +469,6 @@ def hide_colour_pallete(event):
     colour_pallete_visible = False
 
 
-layer = {
-        'outline': {'visible': True},
-        'colour': {'visible': True},
-        'sketch': {'visible': True},
-        'background': {'visible': True},
-        }
 
 def render_layer_menu(x, y, step_x, step_y, name):
     tag_show = f'show_layer_{name}'
@@ -554,12 +569,14 @@ def clear_layer(layer_name):
 
 
 def toggle_layer_visible(layer_name):
+    print(layer_name)
     is_visible = layer[layer_name]['visible']
     layer[layer_name]['visible'] = not is_visible
     layer_ids = canvas.find_withtag(layer_name)
     new_state = 'hidden' if is_visible else 'normal'
 
     layer_ids = canvas.find_withtag(layer_name)
+    print(layer_ids)
     for object_id in layer_ids:
         canvas.itemconfig(object_id, state=new_state)
 
