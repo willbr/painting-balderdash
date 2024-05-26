@@ -453,9 +453,13 @@ def render_layer_menu(x, y, step_x, step_y, name):
     tag_select  = f'select_layer_{name}'
     tag_clear   = f'clear_layer_{name}'
 
-    show_colour   = '#0aa'
-    select_colour = '#f00' if name == current_layer else '#00f'
-    clear_colour  = '#0f0'
+    show_colour   = '#88f'
+    select_colour = '#eee' if name == current_layer else '#8e8'
+    clear_colour  = '#e33'
+
+    font_colour = '#333'
+
+    # show
 
     canvas.create_rectangle(
             x - step_x - (step_x//2),
@@ -465,6 +469,16 @@ def render_layer_menu(x, y, step_x, step_y, name):
             fill=show_colour,
             tags=f'layer_pallete {tag_show}')
 
+    canvas.create_text(
+            x - step_x - (step_x//4),
+            y,
+            text='show',
+            fill=font_colour,
+            font=('georgia 16 bold'),
+            tags=f'layer_pallete {tag_show}')
+
+    # select
+
     canvas.create_rectangle(
             x - step_x,
             y - step_y,
@@ -473,12 +487,30 @@ def render_layer_menu(x, y, step_x, step_y, name):
             fill=select_colour,
             tags=f'layer_pallete {tag_select}')
 
+    canvas.create_text(
+            x,
+            y,
+            text=name,
+            fill=font_colour,
+            font=('georgia 20 bold'),
+            tags=f'layer_pallete {tag_select}')
+
+    # clear
+
     canvas.create_rectangle(
             x + step_x,
             y - step_y,
             x+step_x+(step_x//2),
             y+step_y,
             fill=clear_colour,
+            tags=f'layer_pallete {tag_clear}')
+
+    canvas.create_text(
+            x + step_x+(step_x//4),
+            y,
+            text='x',
+            fill=font_colour,
+            font=('georgia 32 bold'),
             tags=f'layer_pallete {tag_clear}')
 
 
@@ -744,6 +776,6 @@ root.bind('<KeyPress-Escape>', clear_canvas)
 
 canvas.bind('<MouseWheel>', on_windows_zoom)
 
-root.wm_state('zoomed')
+#root.wm_state('zoomed')
 root.mainloop()
 
