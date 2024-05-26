@@ -60,6 +60,7 @@ brush_size_on_canvas = None
 brush_color = '#8B88EF'
 
 current_tool = None
+current_layer = 'sketch'
 
 undo_stack = []
 redo_stack = []
@@ -93,7 +94,6 @@ def clear_canvas(event=None):
 
     undo_stack.append(('clear', visible_ids))
 
-    init_colour_pallete()
     canvas.focus_set()
 
     target_level = 5
@@ -113,7 +113,7 @@ def paint_start(event):
         return
 
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
-    line_points = [x,y,x,y]
+    line_points = [x,y, x,y]
 
     canvas.itemconfig(brush_cursor_id, state='hidden')
     line_id = canvas.create_line(
@@ -125,8 +125,19 @@ def paint_start(event):
             capstyle=ROUND,
             smooth=False, # it's too slow, once you have lots of things on screen
                           # maybe try disabling it while scrolling?
+            tags=current_layer,
             )
+
+    sort_objects_by_layer()
+
     paint_motion(event)
+
+
+def sort_objects_by_layer():
+    for layer_name in ['background', 'sketch', 'colour', 'outline']:
+        object_ids = canvas.find_withtag(layer_name)
+        for object_id in object_ids:
+            canvas.tag_raise(object_id)
 
 
 def paint_motion(event):
@@ -316,7 +327,7 @@ def save_cursor_position(event):
 
 
 def restore_cursor_position(event):
-    print('warping cursor')
+    #print('warping cursor')
     canvas.event_generate(
             '<Motion>',
             warp=True,
@@ -378,6 +389,7 @@ def init_colour_pallete():
         canvas.create_rectangle(x - step_x, y - step_y, x+step_x, y+step_y, fill=colour, tags='colours', state='hidden')
         x += width
 
+init_colour_pallete()
 
 def update_colour_pallete(cursor_x, cursor_y):
     global colour_pallete_pos
@@ -434,6 +446,105 @@ def hide_colour_pallete(event):
     canvas.itemconfigure('colours', state='hidden')
     canvas.config(cursor='none')
     colour_pallete_visible = False
+
+
+def render_layer_menu(x, y, step_x, step_y, name):
+    tag_show = f'show_layer_{name}'
+    tag_select  = f'select_layer_{name}'
+    tag_clear   = f'clear_layer_{name}'
+
+    show_colour   = '#0aa'
+    select_colour = '#f00' if name == current_layer else '#00f'
+    clear_colour  = '#0f0'
+
+    canvas.create_rectangle(
+            x - step_x - (step_x//2),
+            y - step_y,
+            x+step_x,
+            y+step_y,
+            fill=show_colour,
+            tags=f'layer_pallete {tag_show}')
+
+    canvas.create_rectangle(
+            x - step_x,
+            y - step_y,
+            x+step_x,
+            y+step_y,
+            fill=select_colour,
+            tags=f'layer_pallete {tag_select}')
+
+    canvas.create_rectangle(
+            x + step_x,
+            y - step_y,
+            x+step_x+(step_x//2),
+            y+step_y,
+            fill=clear_colour,
+            tags=f'layer_pallete {tag_clear}')
+
+
+def show_layer_pallete(event):
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+    width = 320
+    height = 60
+    step_x = width // 2
+    step_y = height // 2
+    gap = 20
+
+    render_layer_menu(x, y, step_x, step_y, name='outline')
+    y += height + gap
+    render_layer_menu(x, y, step_x, step_y, name='colour')
+    y += height + gap
+    render_layer_menu(x, y, step_x, step_y, name='sketch')
+    y += height + gap
+    render_layer_menu(x, y, step_x, step_y, name='background')
+
+    canvas.config(cursor='crosshair')
+
+
+def hide_layer_pallete(event):
+    global current_layer
+    current = canvas.find_withtag("current")
+    object_id = current[0]
+
+    canvas.config(cursor='none')
+
+    if object_id != brush_cursor_id:
+        tags = tuple(set(canvas.itemcget(object_id, 'tags').split(' ')) - set(('layer_pallete', 'current')))
+        tag = tags[0]
+        #print(f'{object_id=} {tag=}')
+
+        visible_ids = None
+
+        match tag:
+            case 'select_layer_outline':
+                current_layer = 'outline'
+            case 'clear_layer_outline':
+                visible_ids = canvas.find_withtag("outline")
+            case 'select_layer_colour':
+                current_layer = 'colour'
+            case 'clear_layer_colour':
+                visible_ids = canvas.find_withtag("colour")
+            case 'select_layer_sketch':
+                current_layer = 'sketch'
+            case 'clear_layer_sketch':
+                visible_ids = canvas.find_withtag("sketch")
+            case 'select_layer_background':
+                current_layer = 'background'
+            case 'clear_layer_background':
+                visible_ids = canvas.find_withtag("background")
+            case _:
+                print(f'unknown {tag=}')
+
+        if visible_ids:
+            for object_id in visible_ids:
+                canvas.itemconfig(object_id, state='hidden')
+
+            undo_stack.append(('clear', visible_ids))
+
+
+    layer_object_ids = list(canvas.find_withtag('layer_pallete'))
+    for object_id in layer_object_ids:
+        canvas.delete(object_id)
 
 
 initial_zoom = 0
@@ -564,6 +675,10 @@ tools = {
         'start':  show_colour_pallete,
         'end':    hide_colour_pallete,
     },
+    'layer_pallete': {
+        'start':  show_layer_pallete,
+        'end':    hide_layer_pallete,
+    },
     'tool_pallete': {
         'start':  show_colour_pallete,
         'end':    hide_colour_pallete,
@@ -600,6 +715,9 @@ root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
 
 root.bind('<KeyPress-f>', start_tool('color_pallete'))
 root.bind('<KeyRelease-f>', end_tool('color_pallete', warp_back=True))
+
+root.bind('<KeyPress-g>', start_tool('layer_pallete'))
+root.bind('<KeyRelease-g>', end_tool('layer_pallete', warp_back=True))
 
 root.bind('<KeyPress-d>', start_tool('tool_pallete'))
 root.bind('<KeyRelease-d>', end_tool('tool_pallete', warp_back=True))
