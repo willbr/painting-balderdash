@@ -22,13 +22,13 @@ root.title('Painting Balderdash')
 toolbox = Frame(root)
 toolbox.pack(side=LEFT, fill=Y, padx=0, pady=0)
 
-colours = [
-    ['Black', '#333'],
-    ['White', '#eee'],
-    ['Red', '#e33'],
-    ['Green', '#8BEF88'],
-    ['Blue', '#88f'],
-]
+colours = {
+    'Black': '#333',
+    'White': '#eee',
+    'Red': '#e33',
+    'Green': '#8BEF88',
+    'Blue': '#88f',
+}
 
 
 brush_label = Label(toolbox, text=f'N')
@@ -398,7 +398,7 @@ def show_colour_pallete(event):
     x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
     x -= (pallete_width // 2) - (step_x)
 
-    for name, colour in colours:
+    for name, colour in colours.items():
         canvas.create_rectangle(
                 x - step_x,
                 y - step_y,
@@ -725,6 +725,44 @@ def start_redoing(event):
     undo_stack.append(action)
 
 
+def start_background_mode(event):
+    global current_layer
+    current_layer = 'background'
+    set_brush_size(128)
+
+
+def start_sketch_mode(event):
+    global brush_color
+    global current_layer
+
+    print('sketch')
+
+    current_layer = 'sketch'
+
+    brush_color = colours['Blue']
+    canvas.itemconfig(brush_cursor_id, fill=brush_color)
+
+    set_brush_size(14)
+
+def start_colour_mode(event):
+    global current_layer
+    current_layer = 'colour'
+    set_brush_size(28)
+
+
+def start_outline_mode(event):
+    global brush_color
+    global current_layer
+
+    print('outline')
+
+    current_layer = 'outline'
+
+    brush_color = colours['Black']
+    canvas.itemconfig(brush_cursor_id, fill=brush_color)
+
+    set_brush_size(10)
+
 
 tools = {
     'brush': {
@@ -794,6 +832,11 @@ root.bind('<KeyPress-2>', zoom_to_level(5))
 root.bind('<KeyPress-3>', zoom_to_level(7))
 root.bind('<KeyPress-4>', zoom_to_level(9))
 root.bind('<KeyPress-5>', zoom_to_level(13))
+
+root.bind('<KeyPress-q>', start_background_mode)
+root.bind('<KeyPress-w>', start_sketch_mode)
+root.bind('<KeyPress-e>', start_colour_mode)
+root.bind('<KeyPress-r>', start_outline_mode)
 
 root.bind('<KeyPress-u>', start_undoing)
 root.bind('<KeyPress-y>', start_redoing)
