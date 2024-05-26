@@ -627,14 +627,20 @@ def motion_zooming(event):
 def start_tool(tool_name):
     def fn(event):
         global current_tool
-        #print(f'start_tool {tool_name=} {current_tool=}')
-        # TODO end old tool, then start
+
         if tool_name == current_tool:
             return
+        elif current_tool is not None:
+            return
+
+        #print(f'start_tool {tool_name=} {current_tool=}')
         current_tool = tool_name
+
         tool_fn = tools[tool_name]['start']
         tool_fn(event)
+
         save_cursor_position(event)
+
     return fn
 
 
@@ -643,7 +649,8 @@ def end_tool(tool_name, warp_back):
         global current_tool
         #print(f'end_tool {tool_name=}')
         if tool_name != current_tool:
-            raise ValueError(f'end tool: {tool_name=} != {current_tool=}')
+            #print(f'end tool: {tool_name=} != {current_tool=}')
+            return
 
         current_tool = None
 
