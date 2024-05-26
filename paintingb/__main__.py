@@ -77,11 +77,11 @@ def set_brush_size(new_size):
     #print(f'{brush_size_on_canvas=}')
 
 
-def get_visible_ids():
+def get_visible_ids(tag_name=None):
     ignore_list = list(canvas.find_withtag('colours'))
     ignore_list.append(brush_cursor_id)
     #visible_ids = set(canvas.find_all()) - set(ignore_list)
-    all_items = canvas.find_all()
+    all_items = canvas.find_all() if tag_name is None else canvas.find_withtag(tag_name)
     visible_ids = {item for item in all_items if canvas.itemcget(item, 'state') != 'hidden'} - set(ignore_list)
     return visible_ids
 
@@ -448,6 +448,13 @@ def hide_colour_pallete(event):
     colour_pallete_visible = False
 
 
+layer = {
+        'outline': {'visible': True},
+        'colour': {'visible': True},
+        'sketch': {'visible': True},
+        'background': {'visible': True},
+        }
+
 def render_layer_menu(x, y, step_x, step_y, name):
     tag_show = f'show_layer_{name}'
     tag_select  = f'select_layer_{name}'
@@ -458,6 +465,8 @@ def render_layer_menu(x, y, step_x, step_y, name):
     clear_colour  = '#e33'
 
     font_colour = '#333'
+
+    show_label = 'hide' if layer[name]['visible'] else 'show'
 
     # show
 
@@ -472,7 +481,7 @@ def render_layer_menu(x, y, step_x, step_y, name):
     canvas.create_text(
             x - step_x - (step_x//4),
             y,
-            text='show',
+            text=show_label,
             fill=font_colour,
             font=('georgia 16 bold'),
             tags=f'layer_pallete {tag_show}')
@@ -533,7 +542,29 @@ def show_layer_pallete(event):
     canvas.config(cursor='crosshair')
 
 
-def hide_layer_pallete(event):
+def clear_layer(layer_name):
+    layer_ids = canvas.find_withtag(layer_name)
+    new_state = 'hidden'
+    pass
+
+    if layer_ids:
+        #visible_ids = (item for item in layer_ids if canvas.itemcget(item, 'state') != 'hidden')
+        for object_id in layer_ids:
+            canvas.itemconfig(object_id, state=new_state)
+
+
+def toggle_layer_visible(layer_name):
+    is_visible = layer[layer_name]['visible']
+    layer[layer_name]['visible'] = not is_visible
+    layer_ids = canvas.find_withtag(layer_name)
+    new_state = 'hidden' if is_visible else 'normal'
+
+    layer_ids = canvas.find_withtag(layer_name)
+    for object_id in layer_ids:
+        canvas.itemconfig(object_id, state=new_state)
+
+
+def end_layer_pallete(event):
     global current_layer
     current = canvas.find_withtag("current")
     object_id = current[0]
@@ -545,35 +576,26 @@ def hide_layer_pallete(event):
         tag = tags[0]
         #print(f'{object_id=} {tag=}')
 
-        visible_ids = None
+        layer_ids = None
 
-        match tag:
-            case 'select_layer_outline':
-                current_layer = 'outline'
-            case 'clear_layer_outline':
-                visible_ids = canvas.find_withtag("outline")
-            case 'select_layer_colour':
-                current_layer = 'colour'
-            case 'clear_layer_colour':
-                visible_ids = canvas.find_withtag("colour")
-            case 'select_layer_sketch':
-                current_layer = 'sketch'
-            case 'clear_layer_sketch':
-                visible_ids = canvas.find_withtag("sketch")
-            case 'select_layer_background':
-                current_layer = 'background'
-            case 'clear_layer_background':
-                visible_ids = canvas.find_withtag("background")
+        action, layer_name = tag.rsplit('_', 1)
+
+        match action:
+            case 'show_layer':
+                toggle_layer_visible(layer_name)
+                undo_stack.append(('toggle_layer_visible', layer_name))
+            case 'select_layer':
+                current_layer = layer_name
+            case 'clear_layer':
+                clear_layer(layer_name)
+                undo_stack.append(('clear_layer', layer_name))
             case _:
-                print(f'unknown {tag=}')
+                print(f'unknown {action}')
 
-        if visible_ids:
-            for object_id in visible_ids:
-                canvas.itemconfig(object_id, state='hidden')
-
-            undo_stack.append(('clear', visible_ids))
+    hide_layer_pallete()
 
 
+def hide_layer_pallete():
     layer_object_ids = list(canvas.find_withtag('layer_pallete'))
     for object_id in layer_object_ids:
         canvas.delete(object_id)
@@ -657,13 +679,17 @@ def start_undoing(event):
     #print(undo_stack)
     action = undo_stack.pop()
     print(action)
-    action_type, object_ids = action
-    ##print(f'deleting{object_id=}')
-    #canvas.delete(object_id)
-    match action_type:
-        case 'clear':
+    match action:
+        case 'clear_layer', layer_name:
             new_state ='normal'
-        case _:
+            object_ids = canvas.find_withtag(layer_name)
+            print(f'clear layer {object_ids}')
+
+        case 'toggle_layer_visible', layer_name:
+            toggle_layer_visible(layer_name)
+            object_ids = ()
+
+        case _, object_ids:
             new_state = 'hidden'
 
     for object_id in object_ids:
@@ -684,11 +710,18 @@ def start_redoing(event):
     action_type, object_ids = action
     ##print(f'deleting{object_id=}')
 
-    match action_type:
-        case 'clear':
-            new_state ='hidden'
-        case _:
+    match action:
+        case 'clear_layer', layer_name:
+            clear_layer(layer_name)
+            object_ids = ()
+
+        case 'toggle_layer_visible', layer_name:
+            toggle_layer_visible(layer_name)
+            object_ids = ()
+
+        case _, object_ids:
             new_state = 'normal'
+
 
     for object_id in object_ids:
         canvas.itemconfig(object_id, state=new_state)
@@ -709,7 +742,7 @@ tools = {
     },
     'layer_pallete': {
         'start':  show_layer_pallete,
-        'end':    hide_layer_pallete,
+        'end':    end_layer_pallete,
     },
     'tool_pallete': {
         'start':  show_colour_pallete,

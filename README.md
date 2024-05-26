@@ -11,27 +11,17 @@ silly paint program
 * brush size
 * colour picker
 * undo & redo
+* layers
 
 
 # todo
 
+* refactor colour picker, delete when finished
 * limit scroll region
-
 * load and saving (sqlite?)
 * keep all drawings in a notebook
 * replace clear, with new page
-
-* layers
-* groups
-
-* line tool
-* oval tool
-* rect tool
-* text tool
-* selection tool
 * polygon tool
-
 * record events & timestamp for reply?
-
 * record camera panning & zooming
 
