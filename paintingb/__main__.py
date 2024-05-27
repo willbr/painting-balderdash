@@ -55,18 +55,21 @@ canvas.pack(side=LEFT, fill=BOTH, expand=YES)
 toolbox_style = Style()
 toolbox_style.configure('Custom.TFrame', background='#888')
 
+toolbox_label_style = Style()
+toolbox_label_style.configure('Custom.TLabel', background='#888')
+
 toolbox = Frame(root, style='Custom.TFrame')
 
-brush_label = Label(toolbox, text=f'N', font=toolbox_font_spec)
+brush_label = Label(toolbox, text=f'N', font=toolbox_font_spec, style='Custom.TLabel')
 brush_label.pack(side=TOP, padx=10, pady=10)
 
-tool_label = Label(toolbox, text=f'tool', font=toolbox_font_spec)
+tool_label = Label(toolbox, text=f'tool', font=toolbox_font_spec, style='Custom.TLabel')
 tool_label.pack(side=TOP, padx=10, pady=10)
 
-layer_label = Label(toolbox, text=f'layer', font=toolbox_font_spec)
+layer_label = Label(toolbox, text=f'layer', font=toolbox_font_spec, style='Custom.TLabel')
 layer_label.pack(side=TOP, padx=10, pady=10)
 
-zoom_label = Label(toolbox, text=f' 100.00%', font=toolbox_font_spec)
+zoom_label = Label(toolbox, text=f' 100.00%', font=toolbox_font_spec, style='Custom.TLabel')
 zoom_label.pack(side=TOP, padx=10, pady=10)
 
 toolbox.place(x=10, y=10)
