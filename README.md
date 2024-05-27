@@ -16,6 +16,7 @@ silly paint program
 
 # todo
 
+* grid
 * make colour pallete radial
 * limit scroll region
 * load and saving (sqlite?)
