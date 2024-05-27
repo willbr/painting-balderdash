@@ -24,10 +24,15 @@ toolbox.pack(side=LEFT, fill=Y, padx=0, pady=0)
 
 colours = {
     'Black': '#333',
+    'Dark-Gray': '#5f574f',
+    'Light-Grey': '#c2c3c7',
     'White': '#eee',
+    'Yellow': '#ffd817',
+    'Orange': '#ff4f00',
     'Red': '#e33',
     'Green': '#8BEF88',
     'Blue': '#88f',
+    'Purple': '#A349A4',
 }
 
 
