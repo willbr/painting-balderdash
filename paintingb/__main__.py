@@ -808,6 +808,9 @@ def zoom_to_level(target_level):
     return fn
 
 
+canvas.bind('<Enter>', lambda e: canvas.itemconfig(brush_cursor_id, state='normal'))
+canvas.bind('<Leave>', lambda e: canvas.itemconfig(brush_cursor_id, state='hidden'))
+
 root.bind('<ButtonPress-1>', start_tool('brush'))
 root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
 
