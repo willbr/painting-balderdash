@@ -544,15 +544,17 @@ def clear_layer(layer_name):
 
 
 def toggle_layer_visible(layer_name):
-    print(layer_name)
+    #print(layer_name)
     is_visible = layer[layer_name]['visible']
     layer[layer_name]['visible'] = not is_visible
     layer_ids = canvas.find_withtag(layer_name)
     new_state = 'hidden' if is_visible else 'normal'
 
     layer_ids = canvas.find_withtag(layer_name)
-    print(layer_ids)
-    for object_id in layer_ids:
+    deleted_ids = canvas.find_withtag('deleted')
+    live_layer_ids = tuple(set(layer_ids) - set(deleted_ids))
+
+    for object_id in live_layer_ids:
         canvas.itemconfig(object_id, state=new_state)
 
 
@@ -672,17 +674,14 @@ def end_tool(tool_name, warp_back):
     return fn
 
 
-def start_undoing(event):
-    if not undo_stack:
-        print('nothing to undo')
-        return
-
-    #print(undo_stack)
-    action = undo_stack.pop()
+def apply_change(action, change_type):
+    print(undo_stack)
     print(action)
+
+    new_state = 'hidden' if change_type == 'undo' else 'normal'
+
     match action:
         case 'clear_layer', layer_name:
-            new_state ='normal'
             object_ids = canvas.find_withtag(layer_name)
             print(f'clear layer {object_ids}')
 
@@ -691,13 +690,24 @@ def start_undoing(event):
             object_ids = ()
 
         case _, object_ids:
-            new_state = 'hidden'
+            pass
 
     for object_id in object_ids:
+        if new_state == 'hidden':
+            canvas.addtag_withtag('deleted', object_id)
+        else:
+            canvas.dtag(object_id, 'deleted')
         canvas.itemconfig(object_id, state=new_state)
 
-    redo_stack.append(action)
 
+def start_undoing(event):
+    if not undo_stack:
+        print('nothing to undo')
+        return
+
+    action = undo_stack.pop()
+    apply_change(action, 'undo')
+    redo_stack.append(action)
 
 
 def start_redoing(event):
@@ -705,28 +715,8 @@ def start_redoing(event):
         print('nothing to redo')
         return
 
-    #print(redo_stack)
     action = redo_stack.pop()
-    print(action)
-    action_type, object_ids = action
-    ##print(f'deleting{object_id=}')
-
-    match action:
-        case 'clear_layer', layer_name:
-            clear_layer(layer_name)
-            object_ids = ()
-
-        case 'toggle_layer_visible', layer_name:
-            toggle_layer_visible(layer_name)
-            object_ids = ()
-
-        case _, object_ids:
-            new_state = 'normal'
-
-
-    for object_id in object_ids:
-        canvas.itemconfig(object_id, state=new_state)
-
+    apply_change(action, 'redo')
     undo_stack.append(action)
 
 
