@@ -98,6 +98,13 @@ def get_visible_ids(tag_name=None):
     return visible_ids
 
 
+def get_live_ids(tag_name=None):
+    all_items = canvas.find_all() if tag_name is None else canvas.find_withtag(tag_name)
+    deleted_ids = canvas.find_withtag('deleted')
+    live_layer_ids = tuple(set(all_items) - set(deleted_ids))
+    return live_layer_ids
+
+
 def clear_canvas(event=None):
     global current_layer
 
@@ -533,28 +540,29 @@ def show_layer_pallete(event):
 
 
 def clear_layer(layer_name):
-    layer_ids = canvas.find_withtag(layer_name)
-    new_state = 'hidden'
-    pass
+    print(f'clear_layer {layer_name=}')
+    layer_ids = get_live_ids(layer_name)
 
-    if layer_ids:
-        #visible_ids = (item for item in layer_ids if canvas.itemcget(item, 'state') != 'hidden')
-        for object_id in layer_ids:
-            canvas.itemconfig(object_id, state=new_state)
+    if not layer_ids:
+        return
+
+    for object_id in layer_ids:
+        canvas.addtag_withtag('deleted', object_id)
+        canvas.itemconfig(object_id, state='hidden')
+
+    undo_stack.append(('clear_layer', layer_name, layer_ids))
 
 
 def toggle_layer_visible(layer_name):
-    #print(layer_name)
+    print(f'toggle_layer_visible {layer_name=}')
     is_visible = layer[layer_name]['visible']
     layer[layer_name]['visible'] = not is_visible
     layer_ids = canvas.find_withtag(layer_name)
     new_state = 'hidden' if is_visible else 'normal'
 
-    layer_ids = canvas.find_withtag(layer_name)
-    deleted_ids = canvas.find_withtag('deleted')
-    live_layer_ids = tuple(set(layer_ids) - set(deleted_ids))
+    layer_ids = get_live_ids(layer_name)
 
-    for object_id in live_layer_ids:
+    for object_id in layer_ids:
         canvas.itemconfig(object_id, state=new_state)
 
 
@@ -571,7 +579,7 @@ def end_layer_pallete(event):
     elif object_id != brush_cursor_id:
         tags = tuple(set(canvas.itemcget(object_id, 'tags').split(' ')) - set(('layer_pallete', 'current')))
         tag = tags[0]
-        print(f'{object_id=} {tag=}')
+        #print(f'{object_id=} {tag=}')
 
         layer_ids = None
 
@@ -585,7 +593,6 @@ def end_layer_pallete(event):
                 current_layer = layer_name
             case 'clear_layer':
                 clear_layer(layer_name)
-                undo_stack.append(('clear_layer', layer_name))
             case _:
                 print(f'unknown {action}')
 
@@ -675,24 +682,21 @@ def end_tool(tool_name, warp_back):
 
 
 def apply_change(action, change_type):
-    print(undo_stack)
-    print(action)
-
-    new_state = 'hidden' if change_type == 'undo' else 'normal'
-
     match action:
-        case 'clear_layer', layer_name:
-            object_ids = canvas.find_withtag(layer_name)
-            print(f'clear layer {object_ids}')
+        case 'clear_layer', layer_name, object_ids:
+            new_state = 'normal' if change_type == 'undo' else 'hidden'
+            #print(f'{change_type=} clear layer {layer_name=} {object_ids}')
 
         case 'toggle_layer_visible', layer_name:
             toggle_layer_visible(layer_name)
             object_ids = ()
 
         case _, object_ids:
+            new_state = 'hidden' if change_type == 'undo' else 'normal'
             pass
 
     for object_id in object_ids:
+        #print(f'apply {object_id=} {new_state=}')
         if new_state == 'hidden':
             canvas.addtag_withtag('deleted', object_id)
         else:
