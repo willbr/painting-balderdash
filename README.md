@@ -16,6 +16,7 @@ silly paint program
 
 # todo
 
+* make colour pallete radial
 * limit scroll region
 * load and saving (sqlite?)
 * keep all drawings in a notebook
