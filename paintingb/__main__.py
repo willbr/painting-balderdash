@@ -67,6 +67,8 @@ brush_color = '#8B88EF'
 current_tool = None
 current_layer = None
 
+tool_pallete = None
+
 undo_stack = []
 redo_stack = []
 
@@ -112,6 +114,7 @@ def clear_canvas(event=None):
     #print(visible_ids)
     for object_id in visible_ids:
         canvas.itemconfig(object_id, state='hidden')
+        canvas.addtag_withtag('deleted', object_id)
 
     undo_stack.append(('clear', visible_ids))
 
@@ -130,6 +133,11 @@ def clear_canvas(event=None):
     layer['background']['visible'] = True
 
     set_brush_size(14)
+
+
+def sort_objects_by_layer():
+    for layer_name in ['background', 'sketch', 'colour', 'outline']:
+        canvas.tag_raise(layer_name)
 
 
 def paint_start(event):
@@ -160,11 +168,6 @@ def paint_start(event):
     paint_motion(event)
 
 
-def sort_objects_by_layer():
-    for layer_name in ['background', 'sketch', 'colour', 'outline']:
-        canvas.tag_raise(layer_name)
-
-
 def paint_motion(event):
     if line_points is None:
         return
@@ -187,6 +190,72 @@ def paint_end(event):
     if line_points is None:
         return
     num_points = len(line_points)
+    #print(f'{num_points=}\n')
+    canvas.itemconfig(brush_cursor_id, state='normal')
+    canvas.tag_raise(brush_cursor_id)
+    update_brush_cursor(event)
+    on_canvas_resize(event)
+
+    layer_state = 'normal' if layer[current_layer]['visible'] else 'hidden'
+    canvas.itemconfig(line_id, state=layer_state)
+
+    undo_stack.append(('line', (line_id,)))
+    redo_stack.clear()
+
+
+def start_polygon(event):
+    global line_points
+    global line_id
+    #echo_event(event)
+
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+    line_points = [x,y, x,y]
+
+
+    canvas.itemconfig(brush_cursor_id, state='hidden')
+    canvas.config(cursor='crosshair')
+
+    line_id = canvas.create_polygon(
+            x, y,
+            x, y,
+            fill=brush_color,
+            width=brush_size_on_canvas,
+            joinstyle='round',
+            smooth=True, # it's too slow, once you have lots of things on screen
+                          # maybe try disabling it while scrolling?
+            tags=current_layer,
+            )
+
+    sort_objects_by_layer()
+
+    motion_polygon(event)
+
+
+def motion_polygon(event):
+    if line_points is None:
+        return
+
+    last_x, last_y = line_points[-2:]
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+
+    if brush_size_on_canvas < 10:
+        # makes large brushed laggy
+        distance = sqrt((x - last_x) ** 2 + (y - last_y) ** 2)
+        if distance < brush_size_on_canvas // 2:
+            return
+
+    line_points.extend((x,y))
+    #print(len(line_points))
+    canvas.coords(line_id, line_points)
+
+
+def end_polygon(event):
+    #echo_event(event)
+    if line_points is None:
+        return
+    canvas.config(cursor='none')
+
+    #num_points = len(line_points)
     #print(f'{num_points=}\n')
     canvas.itemconfig(brush_cursor_id, state='normal')
     canvas.tag_raise(brush_cursor_id)
@@ -600,8 +669,110 @@ def end_layer_pallete(event):
 
 
 def hide_layer_pallete():
-    #print('hide_layer_pallete')
     canvas.delete('layer_pallete')
+
+
+def select_brush_tool():
+    #print('select_brush_tool')
+    canvas.config(cursor='none')
+    root.bind('<ButtonPress-1>', start_tool('brush'))
+    root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
+
+
+def select_polygon_tool():
+    #print('select_polygon_tool')
+    canvas.config(cursor='crosshair')
+    root.bind('<ButtonPress-1>', start_tool('polygon'))
+    root.bind('<ButtonRelease-1>', end_tool('polygon', warp_back=False))
+
+
+def show_tool_pallete(event):
+    global tool_pallete
+    tool_pallete = {}
+
+    tool_object_ids = tuple(canvas.find_withtag('tool_pallete'))
+
+    if tool_object_ids:
+        print('skipping show tool pallete')
+        return
+
+    x, y = canvas.canvasx(event.x), canvas.canvasy(event.y)
+    width = 320
+    height = 60
+    step_x = width // 2
+    step_y = height // 2
+    gap = 20
+
+    create_tool_menu(x, y, step_x, step_y, name='brush', func=select_brush_tool)
+    y += height + gap
+    create_tool_menu(x, y, step_x, step_y, name='polygon', func=select_polygon_tool)
+
+    canvas.config(cursor='crosshair')
+
+
+def hide_tool_pallete():
+    #print('hide tool pallete')
+    canvas.delete('tool_pallete')
+    canvas.config(cursor='none')
+
+
+def end_tool_pallete(event):
+    #print('end tool pallete')
+    current_ids = canvas.find_withtag('current')
+    tool_ids = canvas.find_withtag('tool_pallete')
+
+    current_tool_ids = tuple(set(current_ids) & set(tool_ids))
+    if current_tool_ids:
+        current_tool_id = current_tool_ids[0]
+        fn = tool_pallete[current_tool_id]
+        fn(event)
+    hide_tool_pallete()
+
+
+def create_tool_menu(x, y, step_x, step_y, name, func):
+    global tool_pallete
+
+    button_colour = '#8e8'
+    highlight_colour = '#eee'
+    font_colour = '#333'
+
+    background_id = canvas.create_rectangle(
+            x - step_x,
+            y - step_y,
+            x+step_x,
+            y+step_y,
+            fill=button_colour,
+            tags=f'tool_pallete')
+
+    text_id = canvas.create_text(
+            x,
+            y,
+            text=name,
+            fill=font_colour,
+            font=('georgia 16 bold'),
+            tags=f'tool_pallete')
+
+    def click_button(event):
+        hide_tool_pallete()
+        func()
+        return 'break'
+
+    def enter_button(event):
+        canvas.itemconfig(background_id, fill=highlight_colour)
+
+    def leave_button(event):
+        canvas.itemconfig(background_id, fill=button_colour)
+
+    tool_pallete[background_id] = click_button
+    tool_pallete[text_id]       = click_button
+
+    canvas.tag_bind(background_id, '<Button-1>', click_button)
+    canvas.tag_bind(text_id, '<Button-1>', click_button)
+
+    canvas.tag_bind(background_id, '<Enter>', enter_button)
+    canvas.tag_bind(text_id, '<Enter>', enter_button)
+
+    canvas.tag_bind(background_id, '<Leave>', leave_button)
 
 
 initial_zoom = 0
@@ -661,10 +832,10 @@ def start_tool(tool_name):
 def end_tool(tool_name, warp_back):
     def fn(event):
         global current_tool
-        #print(f'end_tool {tool_name=}')
         if tool_name != current_tool:
             #print(f'end tool: {tool_name=} != {current_tool=}')
             return
+        #print(f'end_tool {tool_name=}')
 
         current_tool = None
 
@@ -734,14 +905,14 @@ def start_sketch_mode(event):
     global brush_color
     global current_layer
 
-    print('sketch')
-
     current_layer = 'sketch'
 
     brush_color = colours['Blue']
     canvas.itemconfig(brush_cursor_id, fill=brush_color)
 
     set_brush_size(14)
+    select_brush_tool()
+
 
 def start_colour_mode(event):
     global current_layer
@@ -753,14 +924,13 @@ def start_outline_mode(event):
     global brush_color
     global current_layer
 
-    print('outline')
-
     current_layer = 'outline'
 
     brush_color = colours['Black']
     canvas.itemconfig(brush_cursor_id, fill=brush_color)
 
     set_brush_size(10)
+    select_brush_tool()
 
 
 tools = {
@@ -768,6 +938,11 @@ tools = {
         'start':  paint_start,
         'motion': paint_motion,
         'end':    paint_end,
+    },
+    'polygon': {
+        'start':  start_polygon,
+        'motion': motion_polygon,
+        'end':    end_polygon,
     },
     'color_pallete': {
         'start':  show_colour_pallete,
@@ -778,8 +953,8 @@ tools = {
         'end':    end_layer_pallete,
     },
     'tool_pallete': {
-        'start':  show_colour_pallete,
-        'end':    hide_colour_pallete,
+        'start':  show_tool_pallete,
+        'end':    end_tool_pallete,
     },
     'brush_size': {
         'start':  on_alt_b3_press,
@@ -807,12 +982,10 @@ def zoom_to_level(target_level):
         return
     return fn
 
+select_brush_tool()
 
 canvas.bind('<Enter>', lambda e: canvas.itemconfig(brush_cursor_id, state='normal'))
 canvas.bind('<Leave>', lambda e: canvas.itemconfig(brush_cursor_id, state='hidden'))
-
-root.bind('<ButtonPress-1>', start_tool('brush'))
-root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
 
 root.bind('<KeyPress-f>', start_tool('color_pallete'))
 root.bind('<KeyRelease-f>', end_tool('color_pallete', warp_back=True))
@@ -821,7 +994,7 @@ root.bind('<KeyPress-g>', start_tool('layer_pallete'))
 root.bind('<KeyRelease-g>', end_tool('layer_pallete', warp_back=True))
 
 root.bind('<KeyPress-d>', start_tool('tool_pallete'))
-root.bind('<KeyRelease-d>', end_tool('tool_pallete', warp_back=True))
+root.bind('<KeyRelease-d>', end_tool('tool_pallete', warp_back=False))
 
 root.bind('<KeyPress-s>', start_tool('brush_size'))
 root.bind('<KeyRelease-s>', end_tool('brush_size', warp_back=True))
