@@ -4,6 +4,9 @@ from math import sqrt
 
 background_colour = '#aaa'
 
+toolbox_font_spec = ('georgia 16 bold')
+menu_font_spec    = ('georgia 16 bold')
+
 zoom_level = 5
 zoom_scales = [
     0.1, 0.25, 0.333, 0.5, 0.667,
@@ -19,9 +22,6 @@ root = Tk()
 root.geometry('800x600')
 root.title('Painting Balderdash')
 
-toolbox = Frame(root)
-toolbox.pack(side=LEFT, fill=Y, padx=0, pady=0)
-
 colours = {
     'Black': '#333',
     'Dark-Gray': '#5f574f',
@@ -36,11 +36,6 @@ colours = {
 }
 
 
-brush_label = Label(toolbox, text=f'N')
-brush_label.pack(side=TOP, padx=10, pady=10)
-
-zoom_label = Label(toolbox, text=f' 100.00%')
-zoom_label.pack(side=TOP, padx=10, pady=10)
 
 frame = Frame(root)
 frame.pack(fill=BOTH, expand=YES, padx=0, pady=0)
@@ -56,6 +51,25 @@ canvas.pack(side=LEFT, fill=BOTH, expand=YES)
 
 #canvas.config(yscrollcommand=vscrollbar.set, xscrollcommand=hscrollbar.set)
 #canvas.config(scrollregion=(-4000, -4000, 4000, 4000))
+
+toolbox_style = Style()
+toolbox_style.configure('Custom.TFrame', background='#888')
+
+toolbox = Frame(root, style='Custom.TFrame')
+
+brush_label = Label(toolbox, text=f'N', font=toolbox_font_spec)
+brush_label.pack(side=TOP, padx=10, pady=10)
+
+tool_label = Label(toolbox, text=f'tool', font=toolbox_font_spec)
+tool_label.pack(side=TOP, padx=10, pady=10)
+
+layer_label = Label(toolbox, text=f'layer', font=toolbox_font_spec)
+layer_label.pack(side=TOP, padx=10, pady=10)
+
+zoom_label = Label(toolbox, text=f' 100.00%', font=toolbox_font_spec)
+zoom_label.pack(side=TOP, padx=10, pady=10)
+
+toolbox.place(x=10, y=10)
 
 hscrollbar.config(command=canvas.xview)
 vscrollbar.config(command=canvas.yview)
@@ -91,9 +105,13 @@ def set_brush_size(new_size):
     #print(f'{brush_size_on_canvas=}')
 
 
-def get_visible_ids(tag_name=None):
-    ignore_list = list(canvas.find_withtag('colours'))
+def get_visible_ids(tag_name=None, ignore_tags=None):
+    ignore_list = []
+    ignore_list.extend(canvas.find_withtag('colours'))
+    ignore_list.extend(canvas.find_withtag('info'))
     ignore_list.append(brush_cursor_id)
+    ignore_list.append(brush_cursor_id)
+
     #visible_ids = set(canvas.find_all()) - set(ignore_list)
     all_items = canvas.find_all() if tag_name is None else canvas.find_withtag(tag_name)
     visible_ids = {item for item in all_items if canvas.itemcget(item, 'state') != 'hidden'} - set(ignore_list)
@@ -108,8 +126,6 @@ def get_live_ids(tag_name=None):
 
 
 def clear_canvas(event=None):
-    global current_layer
-
     visible_ids = get_visible_ids()
     #print(visible_ids)
     for object_id in visible_ids:
@@ -125,7 +141,7 @@ def clear_canvas(event=None):
 
     zoom(0, 0, diff)
 
-    current_layer = 'sketch'
+    select_layer('sketch')
 
     layer['outline']['visible'] = True
     layer['colour']['visible'] = True
@@ -514,9 +530,15 @@ def hide_colour_pallete(event):
     canvas.config(cursor='none')
 
 
+def select_layer(name):
+    global current_layer
+    current_layer = name
+    layer_label.configure(text=f'{name}')
+
+
 def render_layer_menu(x, y, step_x, step_y, name):
     tag_show = f'show_layer_{name}'
-    tag_select  = f'select_layer_{name}'
+    tag_select  = f'select_layer{name}'
     tag_clear   = f'clear_layer_{name}'
 
     show_colour   = '#88f'
@@ -542,7 +564,7 @@ def render_layer_menu(x, y, step_x, step_y, name):
             y,
             text=show_label,
             fill=font_colour,
-            font=('georgia 16 bold'),
+            font=menu_font_spec,
             tags=f'layer_pallete {tag_show}')
 
     # select
@@ -560,7 +582,7 @@ def render_layer_menu(x, y, step_x, step_y, name):
             y,
             text=name,
             fill=font_colour,
-            font=('georgia 20 bold'),
+            font=menu_font_spec,
             tags=f'layer_pallete {tag_select}')
 
     # clear
@@ -636,7 +658,6 @@ def toggle_layer_visible(layer_name):
 
 
 def end_layer_pallete(event):
-    global current_layer
     current = canvas.find_withtag("current")
     object_id = current[0] if current != () else None
 
@@ -659,7 +680,7 @@ def end_layer_pallete(event):
                 toggle_layer_visible(layer_name)
                 undo_stack.append(('toggle_layer_visible', layer_name))
             case 'select_layer':
-                current_layer = layer_name
+                select_layer(layer_name)
             case 'clear_layer':
                 clear_layer(layer_name)
             case _:
@@ -674,6 +695,7 @@ def hide_layer_pallete():
 
 def select_brush_tool():
     #print('select_brush_tool')
+    tool_label.configure(text=f'brush')
     canvas.config(cursor='none')
     root.bind('<ButtonPress-1>', start_tool('brush'))
     root.bind('<ButtonRelease-1>', end_tool('brush', warp_back=False))
@@ -681,6 +703,7 @@ def select_brush_tool():
 
 def select_polygon_tool():
     #print('select_polygon_tool')
+    tool_label.configure(text=f'polygon')
     canvas.config(cursor='crosshair')
     root.bind('<ButtonPress-1>', start_tool('polygon'))
     root.bind('<ButtonRelease-1>', end_tool('polygon', warp_back=False))
@@ -896,16 +919,14 @@ def start_redoing(event):
 
 
 def start_background_mode(event):
-    global current_layer
-    current_layer = 'background'
+    select_layer('background')
     set_brush_size(128)
 
 
 def start_sketch_mode(event):
     global brush_color
-    global current_layer
 
-    current_layer = 'sketch'
+    select_layer('background')
 
     brush_color = colours['Blue']
     canvas.itemconfig(brush_cursor_id, fill=brush_color)
@@ -915,16 +936,14 @@ def start_sketch_mode(event):
 
 
 def start_colour_mode(event):
-    global current_layer
-    current_layer = 'colour'
+    select_layer('colour')
     set_brush_size(28)
 
 
 def start_outline_mode(event):
     global brush_color
-    global current_layer
 
-    current_layer = 'outline'
+    select_layer('outline')
 
     brush_color = colours['Black']
     canvas.itemconfig(brush_cursor_id, fill=brush_color)
